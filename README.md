@@ -50,7 +50,7 @@ Menyimpan data pengguna aplikasi.
 {
   "nama": "Ndaru L Santosa",
   "email": "ndarulanggeng110@gmail.com",
-  "nip": "199409230612025004",
+  "nip": "101010101010101010",
   "role": "viewer | admin",
   "isVerified": true,
   "photo": "https://lh3.googleusercontent.com/...",
@@ -133,7 +133,7 @@ Menyimpan  **konfigurasi global seperti data Kepala Sekolah.**. untuk kebutuhan 
 ```json
 {
   "nama": "SUPARTI",
-  "nip": "197104191996062001"
+  "nip": "101010101010101010"
 }
 ```
 
