@@ -108,7 +108,7 @@ function renderTable(users) {
         } else if (user.role === 'guru') {
             // WARNA BARU UNTUK GURU
             badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
-            roleLabel = 'GURU MAPEL';
+            roleLabel = 'GURU KELAS';
         }
 
         const photoUrl = user.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`;

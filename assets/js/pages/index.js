@@ -9,6 +9,166 @@ import {
 import { showToast, showConfirm, showCustomModal } from "../utils/ui.js";
 import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js";
 
+// === DASHBOARD LOGIC ===
+let attendanceChartInstance = null;
+
+window.loadDashboardStatus = async (dateStr) => {
+  const listSudah = document.getElementById("listSudahAbsen");
+  const listBelum = document.getElementById("listBelumAbsen");
+  if (!listSudah || !listBelum) return; // Safeguard
+
+  const countSudah = document.getElementById("countSudah");
+  const countBelum = document.getElementById("countBelum");
+
+  listSudah.innerHTML = '<span class="text-xs text-gray-400">Memuat...</span>';
+  listBelum.innerHTML = '<span class="text-xs text-gray-400">Memuat...</span>';
+
+  try {
+    const [allClasses, rekapHariIni] = await Promise.all([
+      adminService.getClasses(),
+      attendanceService.getRekapByDate(dateStr)
+    ]);
+
+    const kelasSudah = rekapHariIni.map(r => r.kelas);
+    const kelasAll = allClasses.map(c => c.id);
+
+    const sudah = kelasAll.filter(k => kelasSudah.includes(k));
+    const belum = kelasAll.filter(k => !kelasSudah.includes(k));
+
+    countSudah.innerText = sudah.length;
+    countBelum.innerText = belum.length;
+
+    listSudah.innerHTML = sudah.length ? sudah.map(k => `<span class="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded font-medium shadow-sm text-xs">${k}</span>`).join('') : '<span class="italic text-gray-400 text-xs">Belum ada kelas yang absen</span>';
+    listBelum.innerHTML = belum.length ? belum.map(k => `<span class="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 px-2 py-1 rounded font-medium shadow-sm text-xs">${k}</span>`).join('') : '<span class="italic text-gray-400 text-xs text-emerald-500">✨ Semua kelas sudah absen!</span>';
+  } catch (e) {
+    console.error("Gagal memuat status kelas:", e);
+    listSudah.innerHTML = '<span class="text-red-500 text-xs">Error memuat</span>';
+    listBelum.innerHTML = '<span class="text-red-500 text-xs">Error memuat</span>';
+  }
+};
+
+window.loadDashboardChart = async () => {
+  const rangeInp = document.getElementById("chartDateRange");
+  const kelasInp = document.getElementById("chartKelasPicker");
+
+  if (!rangeInp || !rangeInp.value) return;
+
+  // split by default Flatpickr range separator " - " (if using localized separator, it might differ but default is " to " but we use altFormat which is visually " to " or " - " let's fetch value from db format YYYY-MM-DD -> raw value not altValue)
+  const rangeRaw = rangeInp._flatpickr ? rangeInp._flatpickr.selectedDates : [];
+  if (rangeRaw.length !== 2) return;
+
+  // Format to standard YYYY-MM-DD for backend
+  const startVal = flatpickr.formatDate(rangeRaw[0], "Y-m-d");
+  const endVal = flatpickr.formatDate(rangeRaw[1], "Y-m-d");
+
+  const selectedKelas = kelasInp && kelasInp.value ? kelasInp.value : null;
+
+  const canvas = document.getElementById("attendanceChart");
+  if (!canvas) return; // Safeguard
+
+  const loading = document.getElementById("chartLoadingText");
+  if (loading) loading.classList.remove("hidden");
+
+  try {
+    const rekaps = await attendanceService.getRekapByDateRange(startVal, endVal, selectedKelas);
+
+    let H = 0, S = 0, I = 0, A = 0;
+    let includedClasses = new Set();
+
+    rekaps.forEach(r => {
+      if (r.kelas) includedClasses.add(r.kelas);
+      if (r.siswa) {
+        Object.values(r.siswa).forEach(s => {
+          if (s.status === 'Hadir') H++;
+          else if (s.status === 'Sakit') S++;
+          else if (s.status === 'Izin') I++;
+          else if (s.status === 'Alpa') A++;
+        });
+      }
+    });
+
+    // Update Stats UI
+    const elH = document.getElementById("statHadir");
+    const elS = document.getElementById("statSakit");
+    const elI = document.getElementById("statIzin");
+    const elA = document.getElementById("statAlpa");
+
+    if (elH) elH.innerText = H;
+    if (elS) elS.innerText = S;
+    if (elI) elI.innerText = I;
+    if (elA) elA.innerText = A;
+
+    // Render classes info if "Semua Kelas"
+    const info = document.getElementById("chartClassesInfo");
+    if (info) {
+      if (!selectedKelas) {
+        info.classList.remove("hidden");
+        const arrKelas = Array.from(includedClasses);
+        if (arrKelas.length > 0) {
+          info.innerHTML = `<strong>${arrKelas.length}</strong> Kelas terekap data:<br><span class="text-indigo-500 font-medium">${arrKelas.join(', ')}</span>`;
+        } else {
+          info.innerHTML = `<em>Tidak ada data absensi untuk rentang tanggal ini.</em>`;
+        }
+      } else {
+        info.classList.add("hidden");
+      }
+    }
+
+    const ctx = canvas.getContext("2d");
+
+    if (attendanceChartInstance) {
+      attendanceChartInstance.destroy();
+    }
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#e2e8f0' : '#475569';
+    const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+    attendanceChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Hadir', 'Sakit', 'Izin', 'Alpa'],
+        datasets: [{
+          label: 'Total Siswa',
+          data: [H, S, I, A],
+          backgroundColor: [
+            'rgba(16, 185, 129, 0.8)', // Emerald
+            'rgba(245, 158, 11, 0.8)', // Amber/Yellow
+            'rgba(59, 130, 246, 0.8)', // Blue
+            'rgba(239, 68, 68, 0.8)'   // Red
+          ],
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: textColor },
+            grid: { color: gridColor }
+          },
+          x: {
+            ticks: { color: textColor },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+  } catch (e) {
+    console.error("Gagal memuat chart:", e);
+    showToast("Gagal memuat statistik", "error");
+  } finally {
+    if (loading) loading.classList.add("hidden");
+  }
+};
+
+
 let state = {
   localData: null,
   currentDocId: null,
@@ -90,17 +250,80 @@ window.exportToPDF = () => {
   const datePicker = document.getElementById("datePicker");
   const picker = document.getElementById("kelasPicker");
 
-  if (datePicker) datePicker.valueAsDate = new Date();
+  const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD' w/ local parsing fallback
+
+  const flatpickrConfig = {
+    locale: "id",
+    dateFormat: "Y-m-d",
+    altInput: true,
+    altFormat: "d M Y",
+    defaultDate: "today"
+  };
+
+  if (datePicker) {
+    const fpMain = flatpickr(datePicker, {
+      ...flatpickrConfig,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (dateStr) {
+          const statusDatePicker = document.getElementById("statusDatePicker");
+          if (statusDatePicker && statusDatePicker._flatpickr) {
+            statusDatePicker._flatpickr.setDate(dateStr, false); // false = jangan trigger event
+          }
+          window.loadDashboardStatus(dateStr);
+        }
+      }
+    });
+  }
+
+  // Dashboard Status Date Picker
+  const statusDatePicker = document.getElementById("statusDatePicker");
+  if (statusDatePicker) {
+    const fpStatus = flatpickr(statusDatePicker, {
+      ...flatpickrConfig,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (dateStr) {
+          window.loadDashboardStatus(dateStr);
+        }
+      }
+    });
+  }
+
+  // Dashboard Chart Init
+  const cRange = document.getElementById("chartDateRange");
+
+  if (cRange) {
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    const fpChartRange = flatpickr(cRange, {
+      ...flatpickrConfig,
+      mode: "range",
+      showMonths: window.innerWidth > 768 ? 2 : 1,
+      defaultDate: [lastWeek, todayStr],
+      onChange: function (selectedDates) {
+        if (selectedDates.length === 2) window.loadDashboardChart();
+      }
+    });
+  }
 
   if (picker) {
     try {
       const classes = await adminService.getClasses();
       classes
         .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-        .forEach((c) => picker.add(new Option(c.id, c.id)));
+        .forEach((c) => {
+          picker.add(new Option(c.id, c.id));
+          const chartKelas = document.getElementById("chartKelasPicker");
+          if (chartKelas) chartKelas.add(new Option(c.id, c.id));
+        });
     } catch (e) {
       console.error(e);
     }
+  }
+
+  const chartKelasInp = document.getElementById("chartKelasPicker");
+  if (chartKelasInp) {
+    chartKelasInp.addEventListener('change', window.loadDashboardChart);
   }
 
   const saved = localStorage.getItem("absensi_draft");
@@ -127,6 +350,17 @@ window.exportToPDF = () => {
       localStorage.removeItem("absensi_draft");
     }
   }
+
+  // First Load Dashboard Status & Chart
+  setTimeout(() => {
+    const statusDatePicker = document.getElementById("statusDatePicker");
+    if (statusDatePicker && statusDatePicker.value) window.loadDashboardStatus(statusDatePicker.value);
+
+    // Auto-load if we have a range date
+    const cRange = document.getElementById("chartDateRange");
+    if (cRange && cRange.value) window.loadDashboardChart();
+  }, 500);
+
 })();
 
 // --- LOGIC UTAMA ---
@@ -294,6 +528,13 @@ window.saveDataToFirestore = () =>
 
       showToast("Data berhasil disimpan!", "success");
       setDirty(false);
+
+      // Reload dashboard class status because of fresh save
+      const statusDatePicker = document.getElementById("statusDatePicker");
+      if (statusDatePicker && statusDatePicker.value) {
+        window.loadDashboardStatus(statusDatePicker.value);
+      }
+      window.loadDashboardChart();
 
       // Clear monthly cache state (force reload next time)
       state.monthlyCache = null;

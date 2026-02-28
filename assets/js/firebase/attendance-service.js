@@ -181,6 +181,38 @@ export const attendanceService = {
         } catch (error) { throw error; }
     },
 
+    // 6. GET REKAP BY DATE (Untuk Dashboard Status Kelas)
+    async getRekapByDate(dateStr) {
+        try {
+            const q = query(collection(db, "rekap_absensi"), where("tanggal", "==", dateStr));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => d.data());
+        } catch (error) { throw error; }
+    },
+
+    // 7. GET REKAP BY DATE RANGE (Untuk Grafik Dashboard)
+    async getRekapByDateRange(startStr, endStr, kelasId = null) {
+        try {
+            let q;
+            if (kelasId) {
+                q = query(
+                    collection(db, "rekap_absensi"),
+                    where("kelas", "==", kelasId),
+                    where("tanggal", ">=", startStr),
+                    where("tanggal", "<=", endStr)
+                );
+            } else {
+                q = query(
+                    collection(db, "rekap_absensi"),
+                    where("tanggal", ">=", startStr),
+                    where("tanggal", "<=", endStr)
+                );
+            }
+            const snap = await getDocs(q);
+            return snap.docs.map(d => d.data());
+        } catch (error) { throw error; }
+    },
+
     invalidateRekap(docId) { AttendanceCache.removeRekap(docId); },
     invalidateMaster(kelasId) { AttendanceCache.removeMaster(kelasId); },
     clearAllCaches() { AttendanceCache.clearAll(); }
