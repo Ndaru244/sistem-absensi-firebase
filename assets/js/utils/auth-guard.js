@@ -14,7 +14,9 @@ export function initAuthGuard(options = { requireAdmin: false, preventLoginAcces
     isInitialized = true;
 
     onAuthStateChanged(auth, async (user) => {
-        const isLoginPage = window.location.pathname.includes('login.html');
+        // Handle clean URLs (could be /login or /login.html)
+        const path = window.location.pathname;
+        const isLoginPage = path.includes('login');
         
         // Not logged in
         if (!user) {
