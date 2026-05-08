@@ -10,6 +10,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
@@ -79,13 +83,112 @@
                     class="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i data-lucide="sun-moon" class="w-5 h-5"></i> Ganti Tema
                 </button>
-                <button onclick="handleLogout()" class="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-red-600 hover:bg-red-50">
+                <button onclick="handleLogout()"
+                    class="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-red-600 hover:bg-red-50">
                     <i data-lucide="log-out" class="w-5 h-5"></i> Keluar
                 </button>
             </div>
         </div>
     </nav>
     <main class="flex-1 max-w-5xl mx-auto w-full p-4 space-y-6">
+
+        <!-- DASHBOARD SECTION -->
+        <div id="dashboardSection" class="mb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Status Kelas -->
+                <div
+                    class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-1 flex flex-col h-full max-h-96">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> Status Absensi
+                        </h2>
+                        <input type="date" id="statusDatePicker"
+                            class="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs border border-gray-200 dark:border-gray-700 rounded p-1.5 outline-none cursor-pointer">
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto pr-2 space-y-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-2">Sudah
+                                Absen (<span id="countSudah">0</span>)</p>
+                            <div id="listSudahAbsen" class="flex flex-wrap gap-2 text-xs min-h-[40px]">
+                                <span class="italic text-gray-400 text-xs">Memuat...</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-2 mt-4">Belum
+                                Absen (<span id="countBelum">0</span>)</p>
+                            <div id="listBelumAbsen" class="flex flex-wrap gap-2 text-xs min-h-[40px]">
+                                <span class="italic text-gray-400 text-xs">Memuat...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grafik Kehadiran -->
+                <div
+                    class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2 flex flex-col h-full min-h-[300px]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <h2
+                            class="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2 w-full sm:w-auto">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></i> Statistik Kehadiran
+                        </h2>
+                        <div class="flex flex-col sm:flex-row items-center justify-end gap-2 text-xs w-full sm:w-auto">
+                            <select id="chartKelasPicker"
+                                class="bg-gray-50 dark:bg-gray-800 outline-none text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 p-2 rounded-lg w-full sm:w-auto">
+                                <option value="">Semua Kelas</option>
+                            </select>
+                            <input type="text" id="chartDateRange" placeholder="Pilih Rentang Tanggal..."
+                                class="bg-gray-50 dark:bg-gray-800 outline-none text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 p-2 rounded-lg w-full sm:w-min cursor-pointer text-center">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                        <div
+                            class="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800 flex flex-col justify-center">
+                            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Total
+                                Hadir</p>
+                            <p class="text-2xl font-black text-emerald-700 dark:text-emerald-300 leading-none mt-1"
+                                id="statHadir">0</p>
+                        </div>
+                        <div
+                            class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-100 dark:border-yellow-800 flex flex-col justify-center">
+                            <p class="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold uppercase">Total Sakit
+                            </p>
+                            <p class="text-2xl font-black text-yellow-700 dark:text-yellow-300 leading-none mt-1"
+                                id="statSakit">0</p>
+                        </div>
+                        <div
+                            class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800 flex flex-col justify-center">
+                            <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase">Total Izin</p>
+                            <p class="text-2xl font-black text-blue-700 dark:text-blue-300 leading-none mt-1"
+                                id="statIzin">0</p>
+                        </div>
+                        <div
+                            class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800 flex flex-col justify-center">
+                            <p class="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase">Total Alpa</p>
+                            <p class="text-2xl font-black text-red-700 dark:text-red-300 leading-none mt-1"
+                                id="statAlpa">0</p>
+                        </div>
+                    </div>
+
+                    <div id="chartClassesInfo"
+                        class="hidden text-xs text-gray-500 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-200 dark:border-gray-700">
+                    </div>
+
+                    <div class="flex-1 w-full relative h-[250px]">
+                        <canvas id="attendanceChart"></canvas>
+                        <div id="chartLoadingText"
+                            class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white/80 dark:bg-darkcard/80 backdrop-blur-sm rounded-lg hidden z-10">
+                            <div class="flex flex-col items-center gap-2">
+                                <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-indigo-500"></i>
+                                <span>Menyusun Grafik...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div
             class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
