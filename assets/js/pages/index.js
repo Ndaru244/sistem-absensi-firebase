@@ -260,9 +260,14 @@ window.exportToPDF = () => {
     defaultDate: "today"
   };
 
+  const attendanceDateConfig = {
+    ...flatpickrConfig,
+    // Diizinkan kembali sesuai request (hanya peringatan)
+  };
+
   if (datePicker) {
     const fpMain = flatpickr(datePicker, {
-      ...flatpickrConfig,
+      ...attendanceDateConfig,
       onChange: function (selectedDates, dateStr, instance) {
         if (dateStr) {
           const statusDatePicker = document.getElementById("statusDatePicker");
@@ -279,7 +284,7 @@ window.exportToPDF = () => {
   const statusDatePicker = document.getElementById("statusDatePicker");
   if (statusDatePicker) {
     const fpStatus = flatpickr(statusDatePicker, {
-      ...flatpickrConfig,
+      ...attendanceDateConfig,
       onChange: function (selectedDates, dateStr, instance) {
         if (dateStr) {
           window.loadDashboardStatus(dateStr);
@@ -371,6 +376,16 @@ window.loadRekapData = async () => {
   const tgl = datePicker.value;
   const kls = kelasPicker.value;
   if (!tgl || !kls) return showToast("Pilih Tanggal & Kelas!", "warning");
+
+  // Cek apakah hari libur (Sabtu/Minggu)
+  const [y, m, d] = tgl.split("-");
+  const dateObj = new Date(y, m - 1, d);
+  const day = dateObj.getDay();
+  if (day === 0 || day === 6) {
+    const namaHari = dateObj.toLocaleDateString("id-ID", { weekday: "long" });
+    showToast(`Perhatian: Hari ini adalah hari ${namaHari}.`, "info");
+  }
+
   const newDocId = `${tgl}_${kls}`;
   if (state.localData && state.currentDocId === newDocId) return;
   state.currentDocId = newDocId;
@@ -393,6 +408,12 @@ window.loadRekapData = async () => {
     if (loading) loading.style.display = "none";
     if (tabelAbsensi) tabelAbsensi.classList.remove("hidden");
     document.getElementById("actionButtons")?.classList.remove("hidden");
+    document.getElementById("searchContainer")?.classList.remove("hidden");
+    document.getElementById("tableLegend")?.classList.remove("hidden");
+
+    // Reset Search
+    const searchInp = document.getElementById("studentSearch");
+    if (searchInp) searchInp.value = "";
 
     renderTable();
     handleLockState(); // Cek status kunci
@@ -407,37 +428,36 @@ function renderTable() {
   if (!tbody || !state.localData) return;
 
   const { siswa } = state.localData;
-
   tbody.innerHTML = Object.keys(siswa)
     .sort((a, b) => siswa[a].nama.localeCompare(siswa[b].nama))
     .map((id) => {
       const s = siswa[id];
       const ketBadge =
         s.keterangan && s.keterangan !== "-"
-          ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-                    <i data-lucide="sticky-note" class="w-3 h-3"></i> ${s.keterangan}
-                   </span>`
+          ? `<div class="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50 w-fit">
+                    <i data-lucide="message-square" class="w-3 h-3"></i> ${s.keterangan}
+                   </div>`
           : "";
 
       return `
-            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition group">
-                <td class="p-4 align-top">
-                    <div class="font-bold text-gray-800 dark:text-gray-200">${s.nama
-        }</div>
-                    <div class="text-xs text-gray-500 font-mono">${s.nis || "-"
-        }</div>
-                    ${ketBadge}
+            <tr class="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-all duration-200">
+                <td class="p-3 md:p-5">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-indigo-500 dark:text-indigo-400 mb-0.5 tracking-tighter">${s.nis || "-"}</span>
+                        <span class="font-bold text-gray-800 dark:text-white text-sm md:text-lg tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">${s.nama}</span>
+                        ${ketBadge}
+                    </div>
                 </td>
-                <td class="p-4 align-top">
-                    <div class="flex flex-wrap gap-2">
+                <td class="p-3 md:p-5">
+                    <div class="flex flex-wrap gap-1.5 sm:gap-2">
                         ${["Hadir", "Sakit", "Izin", "Alpa"]
           .map(
             (st) => `
                                 <button onclick="updateStatus('${id}', '${st}')" 
-                                    class="px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition-all transform active:scale-95 flex items-center gap-1 
+                                    class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border shadow-sm transition-all transform active:scale-90 flex items-center gap-1 sm:gap-1.5 
                                     ${s.status === st
-                ? _getColor(st)
-                : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-600 dark:hover:text-gray-200"
+                ? _getModernColor(st)
+                : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               }">
                                     ${st === "Hadir" && s.status === "Hadir"
                 ? '<i data-lucide="check" class="w-3 h-3"></i>'
@@ -457,14 +477,12 @@ function renderTable() {
   if (window.lucide) window.lucide.createIcons({ root: tbody });
 }
 
-function _getColor(st) {
+function _getModernColor(st) {
   const c = {
-    Hadir:
-      "bg-green-600 text-white border-green-700 ring-2 ring-green-200 dark:ring-green-900",
-    Sakit:
-      "bg-yellow-500 text-white border-yellow-600 ring-2 ring-yellow-200 dark:ring-yellow-900",
-    Izin: "bg-blue-600 text-white border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900",
-    Alpa: "bg-red-600 text-white border-red-700 ring-2 ring-red-200 dark:ring-red-900",
+    Hadir: "bg-emerald-600 text-white border-emerald-700 ring-4 ring-emerald-500/10",
+    Sakit: "bg-amber-500 text-white border-amber-600 ring-4 ring-amber-500/10",
+    Izin: "bg-blue-600 text-white border-blue-700 ring-4 ring-blue-500/10",
+    Alpa: "bg-red-600 text-white border-red-700 ring-4 ring-red-500/10",
   };
   return c[st];
 }
@@ -513,8 +531,15 @@ window.updateStatus = (id, newStatus) => {
   }
 };
 
-window.saveDataToFirestore = () =>
-  showConfirm("Simpan data ke server?", async () => {
+window.saveDataToFirestore = () => {
+  if (!state.localData) return;
+  
+  const [yS, mS, dS] = state.localData.tanggal.split("-");
+  const dateObj = new Date(yS, mS - 1, dS);
+  const day = dateObj.getDay();
+  const namaHari = dateObj.toLocaleDateString("id-ID", { weekday: "long" });
+
+  const _saveProcess = async () => {
     const btn = document.getElementById("btnSave");
     if (!btn || !state.localData || !state.currentDocId) return;
 
@@ -523,7 +548,6 @@ window.saveDataToFirestore = () =>
       if (window.lucide) window.lucide.createIcons({ root: btn });
       btn.disabled = true;
 
-      // PENTING: Pass data kelas untuk invalidate monthly cache
       await attendanceService.saveRekap(state.currentDocId, state.localData);
 
       showToast("Data berhasil disimpan!", "success");
@@ -536,7 +560,6 @@ window.saveDataToFirestore = () =>
       }
       window.loadDashboardChart();
 
-      // Clear monthly cache state (force reload next time)
       state.monthlyCache = null;
 
     } catch (e) {
@@ -546,7 +569,20 @@ window.saveDataToFirestore = () =>
       btn.disabled = false;
       if (window.lucide) window.lucide.createIcons({ root: btn });
     }
-  });
+  };
+
+  if (day === 0 || day === 6) {
+    showConfirm(
+      "Absensi Hari Libur",
+      async () => {
+        await _saveProcess();
+      },
+      `Hari ini adalah hari ${namaHari}. Apakah Anda yakin ingin tetap menyimpan data absensi ini?`
+    );
+  } else {
+    _saveProcess();
+  }
+};
 
 function setDirty(val) {
   state.isDirty = val;
@@ -560,18 +596,50 @@ function handleLockState() {
 
   const isLocked = state.localData.is_locked;
 
+  // Cek Weekend
+  const [yW, mW, dW] = state.localData.tanggal.split("-");
+  const dateObj = new Date(yW, mW - 1, dW);
+  const day = dateObj.getDay();
+  const isWeekend = (day === 0 || day === 6);
+
   const btnSave = document.getElementById("btnSave");
   const btnLock = document.getElementById("btnLock");
   const btnUnlock = document.getElementById("btnUnlock");
   const btnPdf = document.getElementById("btnExport");
   const lockedMsg = document.getElementById("lockedMessage");
 
-  // Tampilkan Pesan Terkunci
-  if (lockedMsg) lockedMsg.classList.toggle("hidden", !isLocked);
+  // Tampilkan Pesan Terkunci / Weekend
+  if (lockedMsg) {
+    if (isWeekend) {
+      lockedMsg.classList.remove("hidden");
+      lockedMsg.innerHTML = `<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex items-center gap-3 text-amber-700 dark:text-amber-300 shadow-sm">
+                        <i data-lucide="info" class="w-6 h-6"></i>
+                        <div class="text-sm">
+                            <p class="font-bold">Hari Libur</p>
+                            <p class="opacity-80">Tidak ada jadwal absensi pada hari Sabtu dan Minggu.</p>
+                        </div>
+                    </div>`;
+      if (window.lucide) window.lucide.createIcons({ root: lockedMsg });
+    } else {
+      lockedMsg.classList.toggle("hidden", !isLocked);
+      lockedMsg.innerHTML = `<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex items-center gap-3 text-amber-700 dark:text-amber-300 shadow-sm">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                        <div class="text-sm">
+                            <p class="font-bold">Data Terkunci</p>
+                            <p class="opacity-80">Data sudah dipatenkan dan tidak dapat diubah lagi oleh guru piket.</p>
+                        </div>
+                    </div>`;
+      if (window.lucide) window.lucide.createIcons({ root: lockedMsg });
+    }
+  }
+
+  // Logika Hak Akses (Guru/Admin vs Orang Tua/Viewer)
+  const myRole = state.currentUser.role;
+  const canEdit = ['admin', 'super_admin', 'guru'].includes(myRole);
 
   // 1. Logika Tombol SIMPAN & KUNCI
-  if (btnSave) btnSave.style.display = isLocked ? "none" : "flex";
-  if (btnLock) btnLock.style.display = isLocked ? "none" : "flex";
+  if (btnSave) btnSave.style.display = (isLocked || !canEdit) ? "none" : "flex";
+  if (btnLock) btnLock.style.display = (isLocked || !canEdit) ? "none" : "flex";
 
   // 2. Logika Tombol BUKA KUNCI (Super Admin & Admin Only)
   if (btnUnlock) {
@@ -649,8 +717,16 @@ if (btnLock) {
 window.openMonthlyModal = () => {
   const modal = document.getElementById("modalMonthly");
   const monthPicker = document.getElementById("monthPickerReport");
+  const monthKls = document.getElementById("monthKelasPicker");
+  const globalKls = document.getElementById("kelasPicker");
 
   if (!modal) return;
+
+  // Sinkronisasi List Kelas
+  if (globalKls && monthKls) {
+      monthKls.innerHTML = globalKls.innerHTML;
+      monthKls.value = globalKls.value;
+  }
 
   modal.classList.remove("hidden");
   if (monthPicker && !monthPicker.value) {
@@ -664,19 +740,29 @@ window.closeMonthlyModal = () => {
 };
 
 window.loadMonthlyReport = async () => {
-  const kelasPicker = document.getElementById("kelasPicker");
+  const monthKls = document.getElementById("monthKelasPicker");
   const monthPicker = document.getElementById("monthPickerReport");
   const tbody = document.getElementById("tbodyBulanan");
 
-  if (!kelasPicker || !monthPicker || !tbody) return;
+  if (!monthKls || !monthPicker || !tbody) return;
 
-  const kls = kelasPicker.value;
+  const kls = monthKls.value;
   const month = monthPicker.value;
 
   if (!kls || !month) return showToast("Pilih Kelas & Bulan!", "warning");
 
-  tbody.innerHTML =
-    '<tr><td colspan="40" class="p-8 text-center"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div> Memproses data...</td></tr>';
+  tbody.innerHTML = `
+    <tr>
+        <td colspan="40" class="p-20 text-center">
+            <div class="flex flex-col items-center gap-4">
+                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <div class="flex flex-col gap-1">
+                    <p class="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">Menyusun Laporan</p>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Mohon tunggu sejenak...</p>
+                </div>
+            </div>
+        </td>
+    </tr>`;
 
   const btnPrint = document.getElementById("btnPrintMonthly");
   if (btnPrint) btnPrint.style.display = "none";
@@ -697,15 +783,15 @@ window.loadMonthlyReport = async () => {
     const headerRow = document.getElementById("headerRowBulanan");
     if (headerRow) {
       let headHtml =
-        '<th class="p-3 sticky left-0 bg-gray-100 dark:bg-gray-700 z-30 border dark:border-gray-600 min-w-[150px] shadow-sm">Nama Siswa</th>';
+        '<th class="p-3 sm:p-4 sticky left-0 bg-gray-50 dark:bg-gray-800 z-30 border-b border-r dark:border-gray-700 w-[120px] sm:w-[200px] text-left text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Nama Siswa</th>';
       for (let i = 1; i <= days; i++) {
-        headHtml += `<th class="p-1 text-center min-w-[30px] border dark:border-gray-600 text-[10px] text-gray-500">${i}</th>`;
+        headHtml += `<th class="p-1 sm:p-2 text-center min-w-[28px] sm:min-w-[35px] border-b border-r dark:border-gray-700 text-[8px] sm:text-[9px] font-bold text-gray-400">${i}</th>`;
       }
       headHtml += `
-            <th class="p-2 border bg-green-100 text-green-800 text-xs">H</th>
-            <th class="p-2 border bg-yellow-100 text-yellow-800 text-xs">S</th>
-            <th class="p-2 border bg-blue-100 text-blue-800 text-xs">I</th>
-            <th class="p-2 border bg-red-100 text-red-800 text-xs">A</th>
+            <th class="p-1 sm:p-2 border-b border-r bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[9px] sm:text-[10px] font-black">H</th>
+            <th class="p-1 sm:p-2 border-b border-r bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[9px] sm:text-[10px] font-black">S</th>
+            <th class="p-1 sm:p-2 border-b border-r bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-[9px] sm:text-[10px] font-black">I</th>
+            <th class="p-1 sm:p-2 border-b bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[9px] sm:text-[10px] font-black">A</th>
         `;
       headerRow.innerHTML = headHtml;
     }
@@ -737,7 +823,7 @@ window.loadMonthlyReport = async () => {
     tbody.innerHTML = Object.keys(master)
       .sort((a, b) => master[a].nama.localeCompare(master[b].nama))
       .map((id) => {
-        let rowHtml = `<td class="p-2 font-medium sticky left-0 bg-white dark:bg-darkcard border-r border-b dark:border-gray-700 z-20 shadow-sm text-xs md:text-sm max-w-[100px] md:max-w-none break-words leading-tight" title="${master[id].nama}">${master[id].nama}</td>`;
+        let rowHtml = `<td class="p-1.5 sm:p-2 font-medium sticky left-0 bg-white dark:bg-darkcard border-r border-b dark:border-gray-700 z-20 shadow-sm text-[10px] sm:text-sm w-[120px] sm:w-[200px] break-words leading-tight" title="${master[id].nama}">${master[id].nama}</td>`;
         let st = { H: 0, S: 0, I: 0, A: 0 };
 
         for (let i = 1; i <= days; i++) {
@@ -751,27 +837,27 @@ window.loadMonthlyReport = async () => {
 
           const badge =
             {
-              Hadir: '<span class="text-green-600 font-bold">H</span>',
-              Sakit: '<span class="text-yellow-600 font-bold text-lg">S</span>',
-              Izin: '<span class="text-blue-600 font-bold text-lg">I</span>',
-              Alpa: '<span class="text-red-600 font-bold text-lg">A</span>',
-              "-": '<span class="text-gray-200 dark:text-gray-700">.</span>',
-            }[s] || '<span class="text-gray-200">.</span>';
+              Hadir: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-emerald-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">H</div>',
+              Sakit: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-amber-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">S</div>',
+              Izin: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">I</div>',
+              Alpa: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-red-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">A</div>',
+              "-": '<div class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto"></div>',
+            }[s] || '<div class="w-1 h-1 rounded-full bg-gray-100 mx-auto"></div>';
 
           const title =
             dataHari.keterangan !== "-"
               ? `Tgl ${i}: ${dataHari.keterangan}`
               : "";
-          rowHtml += `<td class="p-0 text-center border dark:border-gray-700 bg-white dark:bg-darkcard h-8 text-[10px] font-mono cursor-default hover:bg-gray-50" title="${title}">${badge}</td>`;
+          rowHtml += `<td class="p-0.5 sm:p-1 text-center border-b border-r dark:border-gray-800 bg-white dark:bg-darkcard h-8 sm:h-10 cursor-default hover:bg-indigo-50/50 transition-colors" title="${title}">${badge}</td>`;
         }
 
         return `
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                <tr class="hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
                     ${rowHtml}
-                    <td class="text-center font-bold text-xs text-green-700 border bg-green-50/30">${st.H}</td>
-                    <td class="text-center font-bold text-xs text-yellow-700 border bg-yellow-50/30">${st.S}</td>
-                    <td class="text-center font-bold text-xs text-blue-700 border bg-blue-50/30">${st.I}</td>
-                    <td class="text-center font-bold text-xs text-red-700 border bg-red-50/30">${st.A}</td>
+                    <td class="text-center font-black text-[10px] text-emerald-600 border-b border-r bg-emerald-50/30 dark:bg-emerald-900/5">${st.H}</td>
+                    <td class="text-center font-black text-[10px] text-amber-600 border-b border-r bg-amber-50/30 dark:bg-amber-900/5">${st.S}</td>
+                    <td class="text-center font-black text-[10px] text-blue-600 border-b border-r bg-blue-50/30 dark:bg-blue-900/5">${st.I}</td>
+                    <td class="text-center font-black text-[10px] text-red-600 border-b bg-red-50/30 dark:bg-red-900/5">${st.A}</td>
                 </tr>`;
       })
       .join("");
@@ -788,14 +874,14 @@ window.loadMonthlyReport = async () => {
 
 window.printMonthlyData = () => {
   if (state.monthlyCache?.master) {
-    const kelasPicker = document.getElementById("kelasPicker");
-    if (!kelasPicker) return;
+    const klsPicker = document.getElementById("monthKelasPicker");
+    if (!klsPicker) return;
 
     exportMonthlyPDF(
       state.monthlyCache.master,
       state.monthlyCache.reports,
       state.monthlyCache.monthStr,
-      kelasPicker.value,
+      klsPicker.value,
       {
         guruPiket: state.currentUser,
         kepalaSekolah: state.kepalaSekolah,
@@ -805,3 +891,22 @@ window.printMonthlyData = () => {
     showToast("Data belum siap!", "error");
   }
 };
+
+// --- SEARCH LOGIC ---
+document.getElementById("studentSearch")?.addEventListener("input", (e) => {
+  const val = e.target.value.toLowerCase();
+  const rows = document.querySelectorAll("#tbodySiswa tr");
+  rows.forEach((row) => {
+    const name = row.querySelector("span.text-base")?.innerText.toLowerCase() || "";
+    const nis = row.querySelector("span.font-black")?.innerText.toLowerCase() || "";
+    const matches = name.includes(val) || nis.includes(val);
+    
+    if (matches) {
+        row.classList.remove("hidden");
+        row.style.display = "";
+    } else {
+        row.classList.add("hidden");
+        row.style.display = "none";
+    }
+  });
+});
