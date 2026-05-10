@@ -197,3 +197,119 @@ export const showToast = (msg, type = 'info') => {
     requestAnimationFrame(() => { div.classList.remove('translate-y-[-20px]', 'opacity-0'); });
     setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 300); }, 3000);
 };
+
+// --- SHARED NAVBAR ---
+export function renderNavbar(activePage = 'index') {
+    const nav = document.createElement('nav');
+    nav.className = "sticky top-0 z-50 bg-white/80 dark:bg-darkcard/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700";
+
+    const isIndex = activePage === 'index';
+    const isAdmin = activePage === 'admin';
+    const isUsers = activePage === 'users';
+
+    nav.innerHTML = `
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex h-16 items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 p-2 rounded-lg shadow-indigo-200 dark:shadow-none shadow-lg">
+                        <i data-lucide="clipboard-check" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-black tracking-tight text-gray-900 dark:text-white leading-none">
+                            E-Absensi
+                        </h1>
+                        <p class="text-[10px] text-gray-500 font-medium uppercase tracking-widest mt-1">Sistem Absensi Siswa</p>
+                    </div>
+                </div>
+
+                <div class="hidden md:flex items-center gap-3">
+                    <a href="index.html"
+                        class="${isIndex ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 'text-gray-600 dark:text-gray-300 hover:text-indigo-600'} flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full transition">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Beranda
+                    </a>
+
+                    ${isIndex ? `
+                    <button onclick="window.openMonthlyModal()"
+                        class="flex items-center gap-2 px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full transition dark:bg-indigo-900/30 dark:text-indigo-300">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Laporan Bulanan
+                    </button>
+                    ` : ''}
+
+                    <a href="admin.html"
+                        class="admin-only hidden ${isAdmin ? 'text-purple-700 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300' : 'text-gray-600 dark:text-gray-300 hover:text-purple-600'} flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full transition">
+                        <i data-lucide="shield" class="w-4 h-4"></i> Admin Panel
+                    </a>
+
+                    <a href="users.html"
+                        class="super-admin-only hidden ${isUsers ? 'text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300' : 'text-gray-600 dark:text-gray-300 hover:text-rose-600'} flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full transition">
+                        <i data-lucide="users-2" class="w-4 h-4"></i> Manajemen User
+                    </a>
+
+                    <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+
+                    <div id="navbar-profile"></div>
+                </div>
+
+                <button id="mobile-menu-btn"
+                    class="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu"
+            class="hidden md:hidden bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 animate-in slide-in-from-top duration-300">
+            <div class="px-4 py-6 space-y-3">
+                <div id="navbar-profile-mobile" class="mb-4"></div>
+
+                <a href="index.html" class="flex items-center gap-3 px-4 py-3 rounded-xl ${isIndex ? 'text-indigo-700 bg-indigo-50' : 'text-gray-700 dark:text-gray-200'} font-bold text-sm transition-colors">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Beranda
+                </a>
+
+                ${isIndex ? `
+                <button onclick="window.openMonthlyModal()"
+                    class="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm transition-colors">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i> Laporan Bulanan
+                </button>
+                ` : ''}
+
+                <a href="admin.html" class="admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl ${isAdmin ? 'text-purple-700 bg-purple-50' : 'text-gray-700 dark:text-gray-200'} font-bold text-sm transition-colors">
+                    <i data-lucide="shield" class="w-5 h-5"></i> Admin Panel
+                </a>
+
+                <a href="users.html" class="super-admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl ${isUsers ? 'text-rose-700 bg-rose-50' : 'text-gray-700 dark:text-gray-200'} font-bold text-sm transition-colors">
+                    <i data-lucide="users-2" class="w-5 h-5"></i> Manajemen User
+                </a>
+
+                <div class="pt-4 mt-4 border-t dark:border-gray-700">
+                    <button onclick="window.toggleTheme()"
+                        class="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm transition-colors">
+                        <i data-lucide="sun-moon" class="w-5 h-5"></i> Ganti Tema
+                    </button>
+                    <button onclick="window.handleLogout()"
+                        class="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-600 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 font-bold text-sm transition-colors">
+                        <i data-lucide="log-out" class="w-5 h-5"></i> Keluar Sistem
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return nav;
+}
+
+export function initNavbar(activePage = 'index') {
+    const existingNav = document.querySelector('nav');
+    if (existingNav) existingNav.remove();
+
+    const nav = renderNavbar(activePage);
+    document.body.prepend(nav);
+
+    // Mobile menu logic
+    const mobileBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileBtn && mobileMenu) {
+        mobileBtn.onclick = () => mobileMenu.classList.toggle('hidden');
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+}
