@@ -59,15 +59,19 @@ const AttendanceCache = {
 export const attendanceService = {
 
     // 1. GET REKAP (Draft > Cache > Firebase)
-    async getRekap(docId) {
+    async getRekap(docId, forceRefresh = false) {
         try {
             const draft = localStorage.getItem('absensi_draft');
-            if (draft) {
+            if (draft && !forceRefresh) {
                 const parsed = JSON.parse(draft);
                 if (`${parsed.tanggal}_${parsed.kelas}` === docId) return parsed;
             }
-            const cached = AttendanceCache.getRekap(docId);
-            if (cached && !cached.is_locked) return cached;
+            
+            if (!forceRefresh) {
+                const cached = AttendanceCache.getRekap(docId);
+                if (cached && !cached.is_locked) return cached;
+            }
+
             const ref = doc(db, "rekap_absensi", docId);
             const snap = await getDoc(ref);
             if (snap.exists()) {

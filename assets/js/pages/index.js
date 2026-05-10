@@ -369,7 +369,7 @@ window.exportToPDF = () => {
 })();
 
 // --- LOGIC UTAMA ---
-window.loadRekapData = async () => {
+window.loadRekapData = async (forceRefresh = false) => {
   const datePicker = document.getElementById("datePicker");
   const kelasPicker = document.getElementById("kelasPicker");
   if (!datePicker || !kelasPicker) return;
@@ -387,17 +387,17 @@ window.loadRekapData = async () => {
   }
 
   const newDocId = `${tgl}_${kls}`;
-  if (state.localData && state.currentDocId === newDocId) return;
+  if (state.localData && state.currentDocId === newDocId && !forceRefresh) return;
   state.currentDocId = newDocId;
   const loading = document.getElementById("loadingText");
   const tabelAbsensi = document.getElementById("tabelAbsensi");
   if (loading) { loading.style.display = "block"; loading.innerText = "⏳ Mengambil data..."; }
   if (tabelAbsensi) tabelAbsensi.classList.add("hidden");
   try {
-    if (!(state.isDirty && state.localData?.tanggal === tgl && state.localData?.kelas === kls)) {
-      let data = await attendanceService.getRekap(state.currentDocId);
+    if (forceRefresh || !(state.isDirty && state.localData?.tanggal === tgl && state.localData?.kelas === kls)) {
+      let data = await attendanceService.getRekap(state.currentDocId, forceRefresh);
       if (!data) {
-        const master = await attendanceService.getMasterSiswa(kls);
+        const master = await attendanceService.getMasterSiswa(kls, forceRefresh);
         if (!Object.keys(master).length) throw new Error("Kelas Kosong / Belum ada Siswa");
         data = { tanggal: tgl, kelas: kls, siswa: master, is_locked: false };
         showToast("Lembar absensi baru dibuat", "info");
@@ -417,6 +417,7 @@ window.loadRekapData = async () => {
 
     renderTable();
     handleLockState(); // Cek status kunci
+    if (forceRefresh) showToast("Data berhasil diperbarui!", "success");
   } catch (e) {
     if (loading) loading.innerText = "Error: " + e.message;
     showToast(e.message, "error");

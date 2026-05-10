@@ -294,11 +294,16 @@
                     <i data-lucide="school" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
                 </div>
             </div>
-            <div class="md:col-span-1">
+            <div class="md:col-span-1 flex gap-2">
                 <button onclick="loadRekapData()"
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95 flex justify-center items-center gap-2">
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95 flex justify-center items-center gap-2">
                     <i data-lucide="search" class="w-5 h-5"></i>
                     <span class="md:hidden">CARI DATA</span>
+                </button>
+                <button onclick="loadRekapData(true)"
+                    class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-500 p-3 rounded-xl transition-all active:rotate-180 duration-500 shadow-sm border border-gray-200 dark:border-gray-700"
+                    title="Refresh Data">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
                 </button>
             </div>
         </div>
@@ -483,11 +488,11 @@
     </div>
 
     <div class="h-24 md:h-0"></div>
-    <script type="module" src="assets/js/pages/index.js"></script>
+    <script type="module" src="assets/js/pages/index.js?v=2.1"></script>
     <script type="module">
-        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js';
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js';
-        import { initNavbarProfile } from './assets/js/components/navbar.js';
+        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=2.1';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=2.1';
+        import { initNavbarProfile } from './assets/js/components/navbar.js?v=2.1';
 
         window.toggleTheme = toggleTheme;
         initNavbar('index');
