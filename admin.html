@@ -322,13 +322,13 @@
 
     <script type="module">
         import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=2.1';
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=2.1';
         import './assets/js/pages/admin.js?v=2.1';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=2.1';
         import { initNavbarProfile } from './assets/js/components/navbar.js?v=2.1';
 
         window.toggleTheme = toggleTheme;
         initNavbar('admin');
-        initAuthGuard({ requireAdmin: false });
+        initAuthGuard({ requireAdmin: true });
         initNavbarProfile();
 
         const btnTheme = document.getElementById('btnTheme');

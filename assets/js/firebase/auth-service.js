@@ -206,13 +206,14 @@ export const authService = {
   // Helper: Quick check if user is admin (from cache)
   isAdmin(uid) {
     const cached = LoginCache.get(uid);
-    return cached?.role === "admin";
+    return cached?.role === "admin" || cached?.role === "super_admin";
   },
 
   // Helper: Quick check if user is verified (from cache)
   isVerified(uid) {
     const cached = LoginCache.get(uid);
-    return cached?.isVerified === true || cached?.role === "admin";
+    const isAdmin = cached?.role === "admin" || cached?.role === "super_admin";
+    return cached?.isVerified === true || isAdmin;
   },
 };
 

@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/fi
 // Track if guard already initialized to prevent duplicate checks
 let isInitialized = false;
 
-export function initAuthGuard(options = { requireAdmin: false, preventLoginAccess: false }) {
+export function initAuthGuard(options = { requireAdmin: false, requireSuperAdmin: false, preventLoginAccess: false }) {
     // Prevent duplicate initialization
     if (isInitialized) {
         console.log('Auth guard already initialized');
@@ -42,10 +42,13 @@ export function initAuthGuard(options = { requireAdmin: false, preventLoginAcces
                 return;
             }
 
+            const isAdmin = userData.role === 'admin' || userData.role === 'super_admin';
+            const isSuperAdmin = userData.role === 'super_admin';
+
             // Handle login page access for authenticated users
             if (isLoginPage && options.preventLoginAccess) {
-                if (userData.isVerified || userData.role === 'admin') {
-                    window.location.replace(userData.role === 'admin' ? 'admin.html' : 'index.html');
+                if (userData.isVerified || isAdmin) {
+                    window.location.replace(isAdmin ? 'admin.html' : 'index.html');
                 }
                 return;
             }
@@ -55,12 +58,12 @@ export function initAuthGuard(options = { requireAdmin: false, preventLoginAcces
 
             // Redirect if on login page but already authenticated
             if (options.preventLoginAccess) {
-                window.location.href = userData.role === 'admin' ? 'admin.html' : 'index.html';
+                window.location.href = isAdmin ? 'admin.html' : 'index.html';
                 return;
             }
 
             // Block unverified users (except admins)
-            if (!userData.isVerified && userData.role !== 'admin') {
+            if (!userData.isVerified && !isAdmin) {
                 alert("Akun belum diverifikasi Admin.");
                 await auth.signOut();
                 window.location.href = 'login.html';
@@ -68,8 +71,14 @@ export function initAuthGuard(options = { requireAdmin: false, preventLoginAcces
             }
 
             // Block non-admin access to admin pages
-            if (options.requireAdmin && userData.role !== 'admin') {
+            if (options.requireAdmin && !isAdmin) {
                 window.location.href = 'index.html';
+                return;
+            }
+
+            // Block non-super-admin access to restricted pages
+            if (options.requireSuperAdmin && !isSuperAdmin) {
+                window.location.href = 'admin.html';
                 return;
             }
 
