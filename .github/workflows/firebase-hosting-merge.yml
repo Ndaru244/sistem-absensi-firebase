@@ -31,5 +31,22 @@ jobs:
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ABSENSI_INTERNAL }}' > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=service-account.json
-          npx -y firebase-tools deploy --only hosting --project absensi-internal
+
+          # Run deploy and capture output; allow non-zero exit temporarily
+          deploy_output=$(npx -y firebase-tools deploy --only hosting --project absensi-internal 2>&1) || deploy_exit=$?
+
+          # Always clean up credentials
           rm service-account.json
+
+          echo "$deploy_output"
+
+          # If deploy failed, check if it's the known "already active version" false-positive
+          if [ "${deploy_exit:-0}" -ne 0 ]; then
+            if echo "$deploy_output" | grep -q "is the current active version"; then
+              echo "Site is already up-to-date with this version. Treating as success."
+              exit 0
+            else
+              echo "Real deployment error occurred."
+              exit $deploy_exit
+            fi
+          fi
