@@ -27,9 +27,9 @@ jobs:
           export { db, auth, app };
           EOF
 
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ABSENSI_INTERNAL }}
-          channelId: live
-          projectId: absensi-internal
+      - name: Deploy to Firebase Hosting (Production)
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ABSENSI_INTERNAL }}' > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=service-account.json
+          npx -y firebase-tools deploy --only hosting --project absensi-internal
+          rm service-account.json
