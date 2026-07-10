@@ -91,6 +91,13 @@ export const adminService = {
     },
 
     async deleteClass(id) {
+        const q = query(collection(db, "anggota_kelas"), where("kelasId", "==", id));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            const batch = writeBatch(db);
+            snap.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
         await deleteDoc(doc(db, "kelas", id));
         CacheManager.remove('classes');
     },
