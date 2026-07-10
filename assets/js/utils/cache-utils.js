@@ -1,0 +1,80 @@
+const APP_PREFIXES = ['login_session_', 'profile_', 'users_', 'attendance_', 'app_cache_'];
+const APP_KEYS = ['settings_kepala_sekolah'];
+
+export function getDraftKey(uid) {
+  return uid ? `absensi_draft_${uid}` : null;
+}
+
+export function readDraft(uid) {
+  if (!uid) return null;
+  const key = getDraftKey(uid);
+  let raw = localStorage.getItem(key);
+  if (!raw) {
+    const legacy = localStorage.getItem('absensi_draft');
+    if (legacy) {
+      localStorage.setItem(key, legacy);
+      localStorage.removeItem('absensi_draft');
+      raw = legacy;
+    }
+  }
+  return raw;
+}
+
+export function writeDraft(uid, data) {
+  const key = getDraftKey(uid);
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+export function removeDraft(uid) {
+  const key = getDraftKey(uid);
+  if (key) localStorage.removeItem(key);
+  localStorage.removeItem('absensi_draft');
+}
+
+export function clearAllAppCaches() {
+  Object.keys(localStorage).forEach((key) => {
+    if (key === 'theme') return;
+    if (key.startsWith('absensi_draft')) {
+      localStorage.removeItem(key);
+      return;
+    }
+    if (APP_KEYS.includes(key)) {
+      localStorage.removeItem(key);
+      return;
+    }
+    if (APP_PREFIXES.some((p) => key.startsWith(p))) {
+      localStorage.removeItem(key);
+    }
+  });
+}
+
+const KEPSEK_KEY = 'settings_kepala_sekolah';
+const KEPSEK_TTL = 1000 * 60 * 30;
+
+export function getKepalaSekolahCache() {
+  try {
+    const raw = localStorage.getItem(KEPSEK_KEY);
+    if (!raw) return null;
+    const item = JSON.parse(raw);
+    if (Date.now() - item.timestamp > KEPSEK_TTL) {
+      localStorage.removeItem(KEPSEK_KEY);
+      return null;
+    }
+    return item.data;
+  } catch {
+    return null;
+  }
+}
+
+export function setKepalaSekolahCache(data) {
+  try {
+    localStorage.setItem(KEPSEK_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('Kepsek cache error:', e);
+  }
+}
+
+export function clearKepalaSekolahCache() {
+  localStorage.removeItem(KEPSEK_KEY);
+}

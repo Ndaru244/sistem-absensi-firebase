@@ -10,6 +10,7 @@ import {
   updateDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { clearAllAppCaches } from "../utils/cache-utils.js";
 
 const provider = new GoogleAuthProvider();
 
@@ -108,13 +109,6 @@ export const authService = {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check cache first
-      const cachedData = LoginCache.get(user.uid);
-      if (cachedData) {
-        console.log("Login using cached data");
-        return cachedData;
-      }
-
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
 
@@ -180,8 +174,8 @@ export const authService = {
 
       await updateDoc(userRef, safeData);
 
-      // Invalidate cache after update
       LoginCache.remove(uid);
+      localStorage.removeItem(`profile_${uid}`);
 
       return { success: true };
     } catch (error) {
@@ -191,14 +185,7 @@ export const authService = {
   },
 
   async logout() {
-    const user = auth.currentUser;
-    if (user) {
-      LoginCache.clear(); // Clear all session caches
-    }
-
-    // Clear all app caches
-    localStorage.removeItem("absensi_draft");
-
+    clearAllAppCaches();
     await signOut(auth);
     window.location.href = "login.html";
   },

@@ -5,142 +5,67 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>404 - Halaman Tidak Ditemukan</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { darkbg: '#0f172a', darkcard: '#1e293b' } } }
-        }
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
 </head>
 
-<body
-  class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen flex items-center justify-center p-6">
+<body class="app-shell min-h-screen flex items-center justify-center p-6">
 
-    <!-- Preloader -->
-    <style>
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-
-        html.dark #preloader {
-            background-color: #0f172a;
-        }
-
-        .loader-circle {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        .loader-text {
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 800;
-            color: #4f46e5;
-            letter-spacing: 4px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        body.loading {
-            overflow: hidden !important;
-        }
-    </style>
-
-    <div id="preloader">
-        <div class="loader-circle"></div>
-        <div class="loader-text">MEMUAT...</div>
-    </div>
-
-    <script>
-        document.body.classList.add('loading');
-        function hidePreloader() {
-            const preloader = document.getElementById('preloader');
-            if (preloader) {
-                preloader.style.opacity = '0';
-                setTimeout(function () {
-                    preloader.style.display = 'none';
-                    document.body.classList.remove('loading');
-                }, 500);
-            }
-        }
-        if (document.readyState === 'complete') {
-            hidePreloader();
-        } else {
-            window.addEventListener('load', hidePreloader);
-            // Safety timeout: sembunyikan preloader setelah 3 detik jika load event belum terpanggil
-            setTimeout(hidePreloader, 3000);
-        }
-    </script>
-
-  <div
-    class="max-w-md w-full text-center space-y-8 bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
-
-    <div class="flex justify-center">
-      <div class="bg-blue-100 dark:bg-blue-900/30 p-5 rounded-full">
-        <i data-lucide="search-x" class="w-16 h-16 text-blue-600 dark:text-blue-400"></i>
-      </div>
-    </div>
-
-    <div class="space-y-3">
-      <h1 class="text-7xl font-extrabold text-blue-600 dark:text-blue-500 tracking-tighter">404</h1>
-      <h2 class="text-2xl font-bold tracking-tight">Halaman Tidak Ditemukan</h2>
-      <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
-        Maaf, halaman yang Anda cari tidak tersedia atau telah dipindahkan. Pastikan URL sudah benar.
-      </p>
-    </div>
-
-    <div class="flex flex-col sm:flex-row gap-3 pt-4">
-      <a href="index.html"
-        class="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none active:scale-95">
-        <i data-lucide="home" class="w-5 h-5"></i>
-        Dashboard
-      </a>
-      <a href="login.html"
-        class="flex-1 inline-flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 font-bold py-3 px-6 rounded-xl transition-all active:scale-95">
-        <i data-lucide="log-in" class="w-5 h-5"></i>
-        Login
-      </a>
-    </div>
-
-    <p class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-widest font-semibold pt-6">
-      Sistem Absensi Digital
-    </p>
+  <div id="preloader">
+    <div class="loader-circle"></div>
+    <div class="loader-text">Memuat</div>
   </div>
 
   <script>
-    // Inisialisasi Lucide Icons
-    lucide.createIcons();
+    document.body.classList.add('loading');
+    function hidePreloader() {
+      const preloader = document.getElementById('preloader');
+      if (preloader) {
+        preloader.style.opacity = '0';
+        setTimeout(() => {
+          preloader.style.display = 'none';
+          document.body.classList.remove('loading');
+        }, 300);
+      }
+    }
+    if (document.readyState === 'complete') hidePreloader();
+    else {
+      window.addEventListener('load', hidePreloader);
+      setTimeout(hidePreloader, 3000);
+    }
   </script>
+
+  <div class="card max-w-md w-full text-center p-8 sm:p-10 space-y-6 animate-fade-in">
+    <div class="w-14 h-14 bg-primary-50 dark:bg-primary-950 rounded-lg flex items-center justify-center mx-auto">
+      <i data-lucide="search-x" class="w-7 h-7 text-primary-600 dark:text-primary-400"></i>
+    </div>
+
+    <div class="space-y-2">
+      <p class="text-5xl font-semibold text-primary-600 dark:text-primary-400">404</p>
+      <h1 class="text-lg font-semibold text-slate-900 dark:text-white">Halaman Tidak Ditemukan</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+        Halaman yang Anda cari tidak tersedia atau telah dipindahkan.
+      </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-2 pt-2">
+      <a href="index.html" class="btn-primary flex-1 py-2.5">
+        <i data-lucide="home" class="w-4 h-4"></i> Dashboard
+      </a>
+      <a href="login.html" class="btn-secondary flex-1 py-2.5">
+        <i data-lucide="log-in" class="w-4 h-4"></i> Login
+      </a>
+    </div>
+
+    <p class="text-xs text-slate-400 pt-2">SDN Sunter Agung 12 PG</p>
+  </div>
+
+  <script>lucide.createIcons();</script>
 </body>
 
 </html>

@@ -1,6 +1,7 @@
 import { auth, db } from "../firebase/config.js";
 import { attendanceService } from "../firebase/attendance-service.js";
 import { adminService } from "../firebase/admin-service.js";
+import { authService } from "../firebase/auth-service.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   doc,
@@ -8,9 +9,132 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { showToast, showConfirm, showCustomModal } from "../utils/ui.js";
 import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js";
+import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js";
 
 // === DASHBOARD LOGIC ===
 let attendanceChartInstance = null;
+let dashboardInitialized = false;
+let authReady = false;
+
+function getStatusDateStr() {
+  return document.getElementById("statusDatePicker")?.value || null;
+}
+
+const BULAN_LABELS = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+function fillYearSelect(el, selectedYear) {
+  if (!el) return;
+  const currentYear = new Date().getFullYear();
+  const year = selectedYear ?? currentYear;
+  el.innerHTML = "";
+  for (let y = currentYear; y >= currentYear - 5; y--) {
+    el.add(new Option(String(y), String(y), false, y === year));
+  }
+}
+
+function fillMonthSelect(el, selectedMonth) {
+  if (!el) return;
+  const currentMonth = new Date().getMonth() + 1;
+  const month = selectedMonth ?? currentMonth;
+  el.innerHTML = "";
+  BULAN_LABELS.forEach((nama, i) => {
+    const m = i + 1;
+    el.add(new Option(nama, String(m), false, m === month));
+  });
+}
+
+function getMonthYearFromPickers(yearId, monthId) {
+  const yearEl = document.getElementById(yearId);
+  const monthEl = document.getElementById(monthId);
+  if (!yearEl?.value || !monthEl?.value) return null;
+
+  const year = parseInt(yearEl.value, 10);
+  const month = parseInt(monthEl.value, 10);
+  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    monthStr,
+    startVal: `${monthStr}-01`,
+    endVal: `${monthStr}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+function initMonthYearPickers(yearId, monthId, onChange) {
+  const yearEl = document.getElementById(yearId);
+  const monthEl = document.getElementById(monthId);
+  if (!yearEl || !monthEl || yearEl.dataset.initialized === "1") return;
+
+  fillYearSelect(yearEl);
+  fillMonthSelect(monthEl);
+  yearEl.dataset.initialized = "1";
+
+  if (onChange) {
+    yearEl.addEventListener("change", onChange);
+    monthEl.addEventListener("change", onChange);
+  }
+}
+
+function getChartMonthRange() {
+  const picked = getMonthYearFromPickers("chartYearPicker", "chartMonthPicker");
+  if (!picked) return null;
+  return { startVal: picked.startVal, endVal: picked.endVal };
+}
+
+function initChartMonthYearPickers() {
+  initMonthYearPickers("chartYearPicker", "chartMonthPicker", window.loadDashboardChart);
+}
+
+function initReportMonthYearPickers() {
+  initMonthYearPickers("reportYearPicker", "reportMonthPicker");
+}
+
+function mergeMasterWithReports(master, reports) {
+  const merged = { ...master };
+  reports.forEach((r) => {
+    if (!r.siswa) return;
+    Object.entries(r.siswa).forEach(([id, s]) => {
+      if (!merged[id]) {
+        merged[id] = {
+          nama: s.nama || "Siswa",
+          nis: s.nis || "-",
+        };
+      }
+    });
+  });
+  return merged;
+}
+
+function tryRefreshDashboard() {
+  if (!dashboardInitialized || !authReady) return;
+  populateClassPickers();
+  const dateStr = getStatusDateStr();
+  if (dateStr) window.loadDashboardStatus(dateStr);
+  window.loadDashboardChart();
+}
+
+async function populateClassPickers() {
+  const picker = document.getElementById("kelasPicker");
+  const chartKelas = document.getElementById("chartKelasPicker");
+  const monthKelas = document.getElementById("monthKelasPicker");
+  if (!picker || picker.dataset.loaded === "1") return;
+
+  try {
+    const classes = await adminService.getClasses();
+    classes
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+      .forEach((c) => {
+        picker.add(new Option(c.id, c.id));
+        if (chartKelas) chartKelas.add(new Option(c.id, c.id));
+        if (monthKelas) monthKelas.add(new Option(c.id, c.id));
+      });
+    picker.dataset.loaded = "1";
+  } catch (e) {
+    console.error("Gagal memuat daftar kelas:", e);
+  }
+}
 
 window.loadDashboardStatus = async (dateStr) => {
   const listSudah = document.getElementById("listSudahAbsen");
@@ -48,18 +172,11 @@ window.loadDashboardStatus = async (dateStr) => {
 };
 
 window.loadDashboardChart = async () => {
-  const rangeInp = document.getElementById("chartDateRange");
   const kelasInp = document.getElementById("chartKelasPicker");
+  const range = getChartMonthRange();
+  if (!range) return;
 
-  if (!rangeInp || !rangeInp.value) return;
-
-  // split by default Flatpickr range separator " - " (if using localized separator, it might differ but default is " to " but we use altFormat which is visually " to " or " - " let's fetch value from db format YYYY-MM-DD -> raw value not altValue)
-  const rangeRaw = rangeInp._flatpickr ? rangeInp._flatpickr.selectedDates : [];
-  if (rangeRaw.length !== 2) return;
-
-  // Format to standard YYYY-MM-DD for backend
-  const startVal = flatpickr.formatDate(rangeRaw[0], "Y-m-d");
-  const endVal = flatpickr.formatDate(rangeRaw[1], "Y-m-d");
+  const { startVal, endVal } = range;
 
   const selectedKelas = kelasInp && kelasInp.value ? kelasInp.value : null;
 
@@ -67,7 +184,10 @@ window.loadDashboardChart = async () => {
   if (!canvas) return; // Safeguard
 
   const loading = document.getElementById("chartLoadingText");
-  if (loading) loading.classList.remove("hidden");
+  if (loading) {
+    loading.classList.remove("hidden");
+    loading.classList.add("flex");
+  }
 
   try {
     const rekaps = await attendanceService.getRekapByDateRange(startVal, endVal, selectedKelas);
@@ -107,7 +227,7 @@ window.loadDashboardChart = async () => {
         if (arrKelas.length > 0) {
           info.innerHTML = `<strong>${arrKelas.length}</strong> Kelas terekap data:<br><span class="text-indigo-500 font-medium">${arrKelas.join(', ')}</span>`;
         } else {
-          info.innerHTML = `<em>Tidak ada data absensi untuk rentang tanggal ini.</em>`;
+          info.innerHTML = `<em>Tidak ada data absensi untuk bulan ini.</em>`;
         }
       } else {
         info.classList.add("hidden");
@@ -164,7 +284,10 @@ window.loadDashboardChart = async () => {
     console.error("Gagal memuat chart:", e);
     showToast("Gagal memuat statistik", "error");
   } finally {
-    if (loading) loading.classList.add("hidden");
+    if (loading) {
+      loading.classList.add("hidden");
+      loading.classList.remove("flex");
+    }
   }
 };
 
@@ -185,18 +308,42 @@ let state = {
   },
 };
 
+function restoreDraftForUser(uid) {
+  const saved = readDraft(uid);
+  if (!saved) return;
+
+  try {
+    state.localData = JSON.parse(saved);
+    const picker = document.getElementById("kelasPicker");
+    const datePicker = document.getElementById("datePicker");
+    const statusDatePicker = document.getElementById("statusDatePicker");
+
+    if (datePicker) datePicker.value = state.localData.tanggal;
+    if (statusDatePicker) statusDatePicker.value = state.localData.tanggal;
+    if (picker) picker.value = state.localData.kelas;
+    state.currentDocId = `${state.localData.tanggal}_${state.localData.kelas}`;
+
+    document.getElementById("tabelAbsensi")?.classList.remove("hidden");
+    document.getElementById("actionButtons")?.classList.remove("hidden");
+    const loadingText = document.getElementById("loadingText");
+    if (loadingText) loadingText.style.display = "none";
+
+    renderTable();
+    setDirty(true);
+    showToast("Draft dipulihkan", "info");
+  } catch (e) {
+    console.error("Failed to restore draft:", e);
+    removeDraft(uid);
+  }
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     console.log("🔐 Auth Detected:", user.email);
     try {
-      const [userSnap, kepsekSnap] = await Promise.all([
-        getDoc(doc(db, "users", user.uid)),
-        getDoc(doc(db, "settings", "kepala_sekolah")),
-      ]);
+      const uData = await authService.getUserData(user.uid, true);
 
-      // Set Role
-      if (userSnap.exists()) {
-        const uData = userSnap.data();
+      if (uData) {
         state.currentUser = {
           nama: uData.nama || user.displayName || "Guru Piket",
           nip: uData.nip || "-",
@@ -208,22 +355,33 @@ onAuthStateChanged(auth, async (user) => {
         state.currentUser.role = "viewer";
       }
 
-      // Set Kepsek
-      if (kepsekSnap.exists()) {
-        state.kepalaSekolah = kepsekSnap.data();
+      const cachedKepsek = getKepalaSekolahCache();
+      if (cachedKepsek) {
+        state.kepalaSekolah = cachedKepsek;
+      } else {
+        const kepsekSnap = await getDoc(doc(db, "settings", "kepala_sekolah"));
+        if (kepsekSnap.exists()) {
+          state.kepalaSekolah = kepsekSnap.data();
+          setKepalaSekolahCache(state.kepalaSekolah);
+        }
       }
 
-      // Refresh UI jika data absensi sudah terbuka
       if (state.localData) {
         console.log("🔄 Refreshing UI Lock State...");
         handleLockState();
+      } else {
+        restoreDraftForUser(user.uid);
       }
+
+      authReady = true;
+      tryRefreshDashboard();
 
     } catch (e) {
       console.error("Auth Error:", e);
     }
   } else {
     console.log("User Logged Out");
+    authReady = false;
   }
 });
 
@@ -248,123 +406,33 @@ window.exportToPDF = () => {
 // --- INIT ---
 (async () => {
   const datePicker = document.getElementById("datePicker");
-  const picker = document.getElementById("kelasPicker");
-
-  const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD' w/ local parsing fallback
-
-  const flatpickrConfig = {
-    locale: "id",
-    dateFormat: "Y-m-d",
-    altInput: true,
-    altFormat: "d M Y",
-    defaultDate: "today"
-  };
-
-  const attendanceDateConfig = {
-    ...flatpickrConfig,
-    // Diizinkan kembali sesuai request (hanya peringatan)
-  };
+  const statusDatePicker = document.getElementById("statusDatePicker");
+  const today = new Date().toLocaleDateString("en-CA");
 
   if (datePicker) {
-    const fpMain = flatpickr(datePicker, {
-      ...attendanceDateConfig,
-      onChange: function (selectedDates, dateStr, instance) {
-        if (dateStr) {
-          const statusDatePicker = document.getElementById("statusDatePicker");
-          if (statusDatePicker && statusDatePicker._flatpickr) {
-            statusDatePicker._flatpickr.setDate(dateStr, false); // false = jangan trigger event
-          }
-          window.loadDashboardStatus(dateStr);
-        }
-      }
+    if (!datePicker.value) datePicker.value = today;
+    datePicker.addEventListener("change", () => {
+      if (statusDatePicker) statusDatePicker.value = datePicker.value;
+      if (datePicker.value) window.loadDashboardStatus(datePicker.value);
     });
   }
 
-  // Dashboard Status Date Picker
-  const statusDatePicker = document.getElementById("statusDatePicker");
   if (statusDatePicker) {
-    const fpStatus = flatpickr(statusDatePicker, {
-      ...attendanceDateConfig,
-      onChange: function (selectedDates, dateStr, instance) {
-        if (dateStr) {
-          window.loadDashboardStatus(dateStr);
-        }
-      }
+    if (!statusDatePicker.value) statusDatePicker.value = today;
+    statusDatePicker.addEventListener("change", () => {
+      if (statusDatePicker.value) window.loadDashboardStatus(statusDatePicker.value);
     });
   }
 
-  // Dashboard Chart Init
-  const cRange = document.getElementById("chartDateRange");
-
-  if (cRange) {
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-
-    const fpChartRange = flatpickr(cRange, {
-      ...flatpickrConfig,
-      mode: "range",
-      showMonths: window.innerWidth > 768 ? 2 : 1,
-      defaultDate: [lastWeek, todayStr],
-      onChange: function (selectedDates) {
-        if (selectedDates.length === 2) window.loadDashboardChart();
-      }
-    });
-  }
-
-  if (picker) {
-    try {
-      const classes = await adminService.getClasses();
-      classes
-        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-        .forEach((c) => {
-          picker.add(new Option(c.id, c.id));
-          const chartKelas = document.getElementById("chartKelasPicker");
-          if (chartKelas) chartKelas.add(new Option(c.id, c.id));
-        });
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  initChartMonthYearPickers();
+  initReportMonthYearPickers();
 
   const chartKelasInp = document.getElementById("chartKelasPicker");
   if (chartKelasInp) {
     chartKelasInp.addEventListener('change', window.loadDashboardChart);
   }
 
-  const saved = localStorage.getItem("absensi_draft");
-  if (saved) {
-    try {
-      state.localData = JSON.parse(saved);
-      if (datePicker) datePicker.value = state.localData.tanggal;
-      if (picker) picker.value = state.localData.kelas;
-      state.currentDocId = `${state.localData.tanggal}_${state.localData.kelas}`;
-
-      const tabelAbsensi = document.getElementById("tabelAbsensi");
-      const actionButtons = document.getElementById("actionButtons");
-      const loadingText = document.getElementById("loadingText");
-
-      if (tabelAbsensi) tabelAbsensi.classList.remove("hidden");
-      if (actionButtons) actionButtons.classList.remove("hidden");
-      if (loadingText) loadingText.style.display = "none";
-
-      renderTable();
-      setDirty(true);
-      showToast("Draft dipulihkan", "info");
-    } catch (e) {
-      console.error("Failed to restore draft:", e);
-      localStorage.removeItem("absensi_draft");
-    }
-  }
-
-  // First Load Dashboard Status & Chart
-  setTimeout(() => {
-    const statusDatePicker = document.getElementById("statusDatePicker");
-    if (statusDatePicker && statusDatePicker.value) window.loadDashboardStatus(statusDatePicker.value);
-
-    // Auto-load if we have a range date
-    const cRange = document.getElementById("chartDateRange");
-    if (cRange && cRange.value) window.loadDashboardChart();
-  }, 500);
+  dashboardInitialized = true;
 
 })();
 
@@ -500,7 +568,7 @@ window.updateStatus = (id, newStatus) => {
     s.keterangan = ket;
     setDirty(true);
     renderTable();
-    localStorage.setItem("absensi_draft", JSON.stringify(state.localData));
+    if (auth.currentUser?.uid) writeDraft(auth.currentUser.uid, state.localData);
   };
 
   if (["Sakit", "Izin", "Alpa"].includes(newStatus)) {
@@ -556,9 +624,8 @@ window.saveDataToFirestore = () => {
 
       // Reload dashboard class status because of fresh save
       const statusDatePicker = document.getElementById("statusDatePicker");
-      if (statusDatePicker && statusDatePicker.value) {
-        window.loadDashboardStatus(statusDatePicker.value);
-      }
+      const dateStr = getStatusDateStr();
+      if (dateStr) window.loadDashboardStatus(dateStr);
       window.loadDashboardChart();
 
       state.monthlyCache = null;
@@ -683,22 +750,6 @@ function handleLockState() {
   }
 }
 
-const btnUnlock = document.getElementById("btnUnlock");
-if (btnUnlock) {
-  btnUnlock.onclick = () => {
-    showConfirm("Buka Kunci Data? Guru akan bisa mengedit kembali.", async () => {
-      try {
-        await attendanceService.unlockRekap(state.currentDocId);
-        state.localData.is_locked = false;
-        handleLockState();
-        showToast("Data berhasil dibuka kembali", "success");
-      } catch (e) {
-        showToast("Gagal membuka kunci: " + e.message, "error");
-      }
-    });
-  };
-}
-
 const btnLock = document.getElementById("btnLock");
 if (btnLock) {
   btnLock.onclick = () => {
@@ -717,22 +768,34 @@ if (btnLock) {
 // --- MONTHLY REPORT ---
 window.openMonthlyModal = () => {
   const modal = document.getElementById("modalMonthly");
-  const monthPicker = document.getElementById("monthPickerReport");
   const monthKls = document.getElementById("monthKelasPicker");
   const globalKls = document.getElementById("kelasPicker");
+  const reportYear = document.getElementById("reportYearPicker");
+  const reportMonth = document.getElementById("reportMonthPicker");
+  const chartYear = document.getElementById("chartYearPicker");
+  const chartMonth = document.getElementById("chartMonthPicker");
+
+  const chartKls = document.getElementById("chartKelasPicker");
 
   if (!modal) return;
 
-  // Sinkronisasi List Kelas
-  if (globalKls && monthKls) {
-      monthKls.innerHTML = globalKls.innerHTML;
-      monthKls.value = globalKls.value;
+  if (!reportYear?.dataset.initialized) initReportMonthYearPickers();
+
+  if (globalKls && monthKls && globalKls.options.length > 1) {
+    const selected = chartKls?.value || globalKls.value;
+    monthKls.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    Array.from(globalKls.options).forEach((opt) => {
+      if (opt.value) monthKls.add(new Option(opt.text, opt.value, false, opt.value === selected));
+    });
+  }
+
+  if (chartYear?.value && chartMonth?.value && reportYear && reportMonth) {
+    reportYear.value = chartYear.value;
+    reportMonth.value = chartMonth.value;
   }
 
   modal.classList.remove("hidden");
-  if (monthPicker && !monthPicker.value) {
-    monthPicker.value = new Date().toISOString().slice(0, 7);
-  }
+  if (window.lucide) window.lucide.createIcons();
 };
 
 window.closeMonthlyModal = () => {
@@ -742,15 +805,15 @@ window.closeMonthlyModal = () => {
 
 window.loadMonthlyReport = async () => {
   const monthKls = document.getElementById("monthKelasPicker");
-  const monthPicker = document.getElementById("monthPickerReport");
   const tbody = document.getElementById("tbodyBulanan");
+  const picked = getMonthYearFromPickers("reportYearPicker", "reportMonthPicker");
 
-  if (!monthKls || !monthPicker || !tbody) return;
+  if (!monthKls || !tbody) return;
 
   const kls = monthKls.value;
-  const month = monthPicker.value;
+  const month = picked?.monthStr;
 
-  if (!kls || !month) return showToast("Pilih Kelas & Bulan!", "warning");
+  if (!kls || !month) return showToast("Pilih kelas, bulan, dan tahun!", "warning");
 
   tbody.innerHTML = `
     <tr>
@@ -770,14 +833,15 @@ window.loadMonthlyReport = async () => {
 
   try {
     // FORCE REFRESH: Pass forceRefresh = true untuk bypass cache
-    const [master, reports] = await Promise.all([
-      attendanceService.getMasterSiswa(kls),
-      attendanceService.getMonthlyReport(kls, month, true), // Force refresh!
+    const [masterRaw, reports] = await Promise.all([
+      attendanceService.getMasterSiswa(kls, true),
+      attendanceService.getMonthlyReport(kls, month, true),
     ]);
 
-    state.monthlyCache = { master, reports, monthStr: month };
+    const master = mergeMasterWithReports(masterRaw, reports);
+    state.monthlyCache = { master, reports, monthStr: month, kelas: kls };
 
-    const [year, monthNum] = month.split("-");
+    const [year, monthNum] = month.split("-").map(Number);
     const days = new Date(year, monthNum, 0).getDate();
 
     // Header
@@ -874,23 +938,31 @@ window.loadMonthlyReport = async () => {
 };
 
 window.printMonthlyData = () => {
-  if (state.monthlyCache?.master) {
-    const klsPicker = document.getElementById("monthKelasPicker");
-    if (!klsPicker) return;
+  const klsPicker = document.getElementById("monthKelasPicker");
+  const picked = getMonthYearFromPickers("reportYearPicker", "reportMonthPicker");
+  if (!klsPicker || !picked) return showToast("Pilih periode dan kelas!", "warning");
 
-    exportMonthlyPDF(
-      state.monthlyCache.master,
-      state.monthlyCache.reports,
-      state.monthlyCache.monthStr,
-      klsPicker.value,
-      {
-        guruPiket: state.currentUser,
-        kepalaSekolah: state.kepalaSekolah,
-      }
-    );
-  } else {
-    showToast("Data belum siap!", "error");
+  const kls = klsPicker.value;
+  if (!kls) return showToast("Pilih kelas!", "warning");
+
+  if (
+    !state.monthlyCache?.master ||
+    state.monthlyCache.monthStr !== picked.monthStr ||
+    state.monthlyCache.kelas !== kls
+  ) {
+    return showToast("Data tidak sinkron. Klik Tampilkan dulu.", "warning");
   }
+
+  exportMonthlyPDF(
+    state.monthlyCache.master,
+    state.monthlyCache.reports,
+    state.monthlyCache.monthStr,
+    kls,
+    {
+      guruPiket: state.currentUser,
+      kepalaSekolah: state.kepalaSekolah,
+    }
+  );
 };
 
 // --- SEARCH LOGIC ---

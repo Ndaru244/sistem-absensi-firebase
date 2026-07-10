@@ -6,6 +6,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { LoginCache } from "./auth-service.js";
 
 // ===== USER CACHE MANAGER =====
 const UserCache = {
@@ -71,17 +72,23 @@ export const userService = {
   async toggleVerified(userId, currentStatus) {
     await updateDoc(doc(db, "users", userId), { isVerified: !currentStatus });
     UserCache.clear();
+    LoginCache.remove(userId);
+    localStorage.removeItem(`profile_${userId}`);
   },
 
   // 3. UPDATE USER
   async updateUser(userId, updateData) {
     await updateDoc(doc(db, "users", userId), updateData);
     UserCache.clear();
+    LoginCache.remove(userId);
+    localStorage.removeItem(`profile_${userId}`);
   },
 
   // 4. DELETE USER
   async deleteUserDoc(userId) {
     await deleteDoc(doc(db, "users", userId));
     UserCache.clear();
+    LoginCache.remove(userId);
+    localStorage.removeItem(`profile_${userId}`);
   }
 };

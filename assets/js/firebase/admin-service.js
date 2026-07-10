@@ -1,4 +1,5 @@
 import { db } from './config.js';
+import { AttendanceCache } from './attendance-service.js';
 import {
     collection, getDocs, doc, writeBatch, deleteDoc, setDoc, query, where, limit, getDoc
     // Hapus 'orderBy' dari import jika tidak dipakai lagi, atau biarkan saja tidak masalah
@@ -30,7 +31,11 @@ const CacheManager = {
     },
 
     remove(key) { localStorage.removeItem(this.PREFIX + key); },
-    clear() { localStorage.clear(); } 
+    clear() {
+        Object.keys(localStorage)
+            .filter((k) => k.startsWith(this.PREFIX))
+            .forEach((k) => localStorage.removeItem(k));
+    }
 };
 
 export const adminService = {
@@ -159,7 +164,7 @@ export const adminService = {
     async uploadDraftBatch(draftData) {
         if (!draftData || draftData.length === 0) return;
         const batch = writeBatch(db);
-        
+
         draftData.forEach((student) => {
             const newDocRef = doc(collection(db, "siswa"));
             batch.set(newDocRef, {
@@ -168,10 +173,12 @@ export const adminService = {
                 nis: student.nis,
                 status_aktif: 'Aktif'
             });
-            CacheManager.remove(`students_${student.id_kelas}`);
         });
 
         await batch.commit();
+        draftData.forEach((student) => {
+            AttendanceCache.removeMaster(student.id_kelas);
+        });
     },
 
     async addSiswaToSpecialClass(kelasId, siswaIds) {
@@ -185,7 +192,9 @@ export const adminService = {
             });
         });
         await batch.commit();
+        AttendanceCache.removeMaster(kelasId);
     },
+
     async moveStudentBatch(studentIds, newClassId) {
         if (!studentIds || studentIds.length === 0) return;
         
@@ -201,8 +210,9 @@ export const adminService = {
         });
 
         await batch.commit();
-        
-        CacheManager.clear(); 
+
+        CacheManager.clear();
+        AttendanceCache.clearAll();
     },
 
     async deleteStudent(id, kelasId) {
@@ -217,6 +227,9 @@ export const adminService = {
             console.log(`Menghapus siswa ${id} secara permanen`);
             await deleteDoc(doc(db, "siswa", id));
         }
-        if (kelasId) CacheManager.remove(`students_${kelasId}`);
+        if (kelasId) {
+            AttendanceCache.removeMaster(kelasId);
+            CacheManager.remove('classes');
+        }
     }
 };
