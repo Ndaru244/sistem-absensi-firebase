@@ -8,7 +8,7 @@
     <meta name="description" content="Manajemen data Master Kelas dan Siswa untuk operasional sekolah.">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=69b2699">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -252,16 +252,21 @@
     </div>
 
     <script type="module">
-        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=__BUILD_ID__';
-        import './assets/js/pages/admin.js?v=__BUILD_ID__';
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=__BUILD_ID__';
-        import { initNavbarProfile } from './assets/js/components/navbar.js?v=__BUILD_ID__';
+        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=69b2699';
+        import './assets/js/pages/admin.js?v=69b2699';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=69b2699';
+        import { initNavbarProfile } from './assets/js/components/navbar.js?v=69b2699';
 
         window.toggleTheme = toggleTheme;
         initNavbar('admin');
         initAuthGuard({ requireAdmin: true });
         initNavbarProfile();
     </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function () {});
+}
+</script>
 </body>
 
 </html>

@@ -183,7 +183,7 @@ export const showToast = (msg, type = 'info') => {
     setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 200); }, 3000);
 };
 
-import { SCHOOL_NAME } from './constants.js';
+import { SCHOOL_NAME } from './constants.js?v=69b2699';
 export function renderNavbar(activePage = 'index') {
     const nav = document.createElement('nav');
     nav.className = 'app-nav';
@@ -291,4 +291,25 @@ export function initNavbar(activePage = 'index') {
     }
 
     if (window.lucide) window.lucide.createIcons();
+}
+
+export function updateNavbarActive(activePage = 'index') {
+    document.querySelectorAll('[data-nav]').forEach((link) => {
+        const page = link.dataset.nav;
+        const active = page === activePage;
+        if (link.classList.contains('nav-link') || link.classList.contains('nav-link-active')) {
+            link.classList.toggle('nav-link-active', active);
+            link.classList.toggle('nav-link', !active);
+            return;
+        }
+        const activeCls = ['text-primary-600', 'bg-primary-50', 'dark:text-primary-400', 'dark:bg-primary-950/50'];
+        const idleCls = ['text-slate-700', 'dark:text-slate-200', 'hover:bg-slate-100', 'dark:hover:bg-slate-800'];
+        if (active) {
+            link.classList.add(...activeCls);
+            idleCls.forEach((c) => link.classList.remove(c));
+        } else {
+            link.classList.remove(...activeCls);
+            idleCls.forEach((c) => link.classList.add(c));
+        }
+    });
 }

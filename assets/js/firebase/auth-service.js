@@ -1,4 +1,4 @@
-import { auth, db } from "./config.js";
+import { auth, db } from "./config.js?v=69b2699";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -10,7 +10,7 @@ import {
   updateDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { clearAllAppCaches } from "../utils/cache-utils.js";
+import { clearAllAppCaches } from "../utils/cache-utils.js?v=69b2699";
 
 const provider = new GoogleAuthProvider();
 
@@ -82,25 +82,43 @@ export const authService = {
 
   // OPTIMIZED: Check cache first untuk user data
   async getUserData(uid, useCache = true) {
-    if (useCache) {
+    try {
+      if (useCache) {
+        const cached = LoginCache.get(uid);
+        if (cached) {
+          console.log("User data from cache");
+          return cached;
+        }
+      }
+
+      console.log("Fetching user data from Firebase...");
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        return null;
+      }
+
+      const userData = userSnap.data();
+      LoginCache.set(uid, userData);
+      return userData;
+    } catch (error) {
+      console.error("getUserData error:", error);
       const cached = LoginCache.get(uid);
-      if (cached) {
-        console.log("User data from cache");
-        return cached;
+      return cached || null;
+    }
+  },
+
+  /** Network-first + retry; fallback cache saat offline */
+  async getUserDataReliable(uid, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+      const data = await this.getUserData(uid, false);
+      if (data) return data;
+      if (i < maxRetries - 1) {
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
       }
     }
-
-    console.log("Fetching user data from Firebase...");
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      return null;
-    }
-
-    const userData = userSnap.data();
-    LoginCache.set(uid, userData);
-    return userData;
+    return this.getUserData(uid, true);
   },
 
   // OPTIMIZED: Login dengan parallel operations
@@ -187,7 +205,7 @@ export const authService = {
   async logout() {
     clearAllAppCaches();
     await signOut(auth);
-    window.location.href = "login.html";
+    window.location.href = "/login.html";
   },
 
   // Helper: Quick check if user is admin (from cache)

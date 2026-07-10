@@ -3,7 +3,7 @@
 
 # Sistem Absensi Digital (Secure & Role-Based)
 
-Sistem absensi berbasis web modern yang dirancang untuk efektivitas pendataan kehadiran siswa secara harian dan bulanan. Aplikasi ini menggunakan **Firebase v12+ (Modular SDK)** dengan sistem keamanan bertingkat (**Admin vs Guru**).
+Sistem absensi berbasis web modern untuk pendataan kehadiran siswa harian dan bulanan. Aplikasi ini menggunakan **Firebase v12+ (Modular SDK)** dengan arsitektur **Offline First**, sistem keamanan bertingkat, dan deployment otomatis via GitHub Actions.
 
 **URL Aplikasi:** [https://absensi-internal.web.app/](https://absensi-internal.web.app/)
 
@@ -11,29 +11,41 @@ Sistem absensi berbasis web modern yang dirancang untuk efektivitas pendataan ke
 
 ## Tech Stack
 
-* **Frontend:** HTML5, Tailwind CSS (CDN), Lucide Icons.
-* **Backend:** Firebase Firestore (NoSQL Database).
-* **Auth:** Firebase Authentication (Google Sign-In dengan metode Redirect).
-* **Fitur Utama:**
-    * **PDF Export:** Laporan harian (Portrait) dan bulanan (Landscape) via jsPDF & AutoTable.
-    * **Cache Manager:** Strategi *Cache-First* pada LocalStorage untuk efisiensi kuota Firestore.
-    * **Secure Guards:** Proteksi rute otomatis berdasarkan *Role* dan status verifikasi.
-    * **Visual Feedback:** Indikator status loading dan sukses pada aksi pengguna.
+| Layer | Teknologi |
+| ----- | --------- |
+| **Frontend** | HTML5, Tailwind CSS (build lokal), Lucide Icons, Chart.js |
+| **Backend** | Firebase Firestore (NoSQL) |
+| **Auth** | Firebase Authentication (Google Sign-In via Popup) |
+| **Export** | jsPDF & AutoTable (laporan harian & bulanan) |
+| **Hosting** | Firebase Hosting + Service Worker |
+| **CI/CD** | GitHub Actions → `firebase deploy` |
+
+### Fitur Utama
+
+* **Offline First** — LocalStorage sebagai sumber data utama; Firebase hanya untuk sinkronisasi.
+* **Cache Manager** — TTL per-layer (rekap, master siswa, login session, dashboard query).
+* **Draft Absensi** — Per-user (`absensi_draft_{uid}`), auto-restore saat reload.
+* **Sync Queue** — Write absensi di-queue saat offline, retry otomatis saat online.
+* **Multi-tab Sync** — `BroadcastChannel` untuk sinkronisasi draft antar tab.
+* **Service Worker** — Precache shell aplikasi agar tetap bisa dibuka offline.
+* **Firestore Persistence** — IndexedDB cache untuk fallback read Firestore.
+* **Secure Guards** — Proteksi rute berdasarkan role dan status verifikasi.
 
 ---
 
 ## Manajemen Akses (RBAC)
 
-Sistem menggunakan **Role-Based Access Control (RBAC)**.
-Pendaftar baru **tidak langsung** bisa mengakses data.
+Sistem menggunakan **Role-Based Access Control (RBAC)**. Pendaftar baru **tidak langsung** bisa mengakses data (`isVerified: false`).
 
 ### Role & Hak Akses
 
-| Role              | Deskripsi                         | Hak Akses                                                                            |
-| ----------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
-| **Viewer (Guru)** | User standar setelah registrasi   | - Absen Harian<br>- Lihat Laporan<br>- Tidak bisa edit Data Master                 |
-| **Admin**         | Pengelola sistem                  | - Full Access (CRUD Siswa/Kelas)<br>- Verifikasi User Baru<br>- Kunci / Buka Absensi |
-| **Pending**       | Status awal (`isVerified: false`) | Tidak bisa masuk dashboard (Blocked)                                               |
+| Role | Deskripsi | Hak Akses |
+| ---- | --------- | --------- |
+| **Viewer** | User standar setelah verifikasi | Lihat laporan, tidak bisa input absensi |
+| **Guru** | Guru piket | Input & simpan absensi harian, kunci data |
+| **Admin** | Pengelola sistem | CRUD siswa/kelas, verifikasi user, buka kunci absensi |
+| **Super Admin** | Administrator tertinggi | Semua hak admin + manajemen user & role |
+| **Pending** | `isVerified: false` | Diblokir dari dashboard |
 
 ---
 
@@ -41,101 +53,37 @@ Pendaftar baru **tidak langsung** bisa mengakses data.
 
 ### 1. Koleksi `users`
 
-Menyimpan data pengguna aplikasi.
-
-* **Doc ID:** `UID` (Google Auth UID)
-* **Fields:**
-
-```json
-{
-  "nama": "Ndaru L Santosa",
-  "email": "ndarulanggeng110@gmail.com",
-  "nip": "101010101010101010",
-  "role": "viewer | admin",
-  "isVerified": true,
-  "photo": "https://lh3.googleusercontent.com/...",
-  "createdAt": "2025-12-29T09:50:19.970Z",
-  "updatedAt": "2025-12-29T10:13:48.095Z"
-}
-```
-
----
+* **Doc ID:** UID (Google Auth)
+* **Fields:** `nama`, `email`, `nip`, `role` (`viewer` \| `guru` \| `admin` \| `super_admin`), `isVerified`, `photo`, `createdAt`, `updatedAt`
 
 ### 2. Koleksi `kelas`
 
-Master data kelas.
-
-* **Doc ID:** Auto-generated
-* **Fields:**
-
-```json
-{
-  "nama_kelas": "1A"
-}
-```
-
----
+* **Doc ID:** Kode kelas (mis. `6B`, `X RPL 1`)
+* **Fields:** `nama_kelas`, `is_khusus` (boolean — kelas mapel/khusus)
 
 ### 3. Koleksi `siswa`
 
-Master data siswa.
-
 * **Doc ID:** Auto-generated
-* **Fields:**
+* **Fields:** `nis`, `nama_siswa`, `id_kelas`, `status_aktif`
 
-```json
-{
-  "nis": "2818",
-  "nama_siswa": "MUHAMMAD ZABIR AGHA",
-  "id_kelas": "6B",
-  "status_aktif": "Aktif"
-}
-```
+### 4. Koleksi `anggota_kelas`
 
----
+Relasi siswa ↔ kelas khusus (`is_khusus: true`).
 
-### 4. Koleksi `rekap_absensi` (Transaksi)
+* **Doc ID:** `{kelasId}_{siswaId}`
+* **Fields:** `kelasId`, `siswaId`, `assignedAt`
 
-Menyimpan **1 dokumen per Kelas per Tanggal**.
+### 5. Koleksi `rekap_absensi`
 
-* **Doc ID:** `[TANGGAL]_[NAMA_KELAS]`
-  Contoh: `2025-12-28_X RPL 1`
+Satu dokumen per kelas per tanggal.
 
-* **Fields:**
+* **Doc ID:** `{TANGGAL}_{KELAS}` — contoh: `2025-12-28_6B`
+* **Fields:** `tanggal`, `kelas`, `is_locked`, `locked_at`, `created_at`, `updated_at`, `siswa` (map status per siswa)
 
-```json
-{
-  "tanggal": "2025-12-26",
-  "kelas": "6B",
-  "is_locked": true,
-  "locked_at": "December 28, 2025...",
-  "siswa": {
-    "DOC_ID_SISWA": {
-      "nama": "MUHAMMAD ZABIR AGHA",
-      "nis": "2818",
-      "status": "Hadir | Sakit | Izin | Alpa",
-      "keterangan": "-"
-    }
-  }
-}
-```
-
----
-
-### 5. Koleksi `settings`
-
-Menyimpan  **konfigurasi global seperti data Kepala Sekolah.**. untuk kebutuhan Print PDF
+### 6. Koleksi `settings`
 
 * **Doc ID:** `kepala_sekolah`
-
-* **Fields:**
-
-```json
-{
-  "nama": "SUPARTI",
-  "nip": "101010101010101010"
-}
-```
+* **Fields:** `nama`, `nip` — digunakan saat export PDF
 
 ---
 
@@ -143,140 +91,182 @@ Menyimpan  **konfigurasi global seperti data Kepala Sekolah.**. untuk kebutuhan 
 
 ```text
 absensi/
-├── .github/workflows/                  # Otomatisasi Deployment (CI/CD)
+├── .github/workflows/              # CI/CD deploy ke Firebase Hosting
 ├── assets/
+│   ├── css/
+│   │   ├── tailwind.input.css      # Source Tailwind
+│   │   └── tailwind.css            # Output build (minified)
 │   ├── images/
-│   │   └── logo.png                    # Logo Institusi & Favicon
+│   │   └── logo.png
 │   └── js/
 │       ├── components/
-│       │   └── navbar.js               # UI Profile & Navigasi Dinamis
+│       │   └── navbar.js
 │       ├── firebase/
-│       │   ├── admin-service.js        # CRUD Master Data (Kelas/Siswa) & Cache
-│       │   ├── attendance-service.js   # Transaksi Absensi & Firestore Writes
-│       │   ├── auth-service.js         # Logika Login & Session
-│       │   ├── config.js               # Inisialisasi Firebase (API Keys)
-│       │   ├── profile-service.js      # Update NIP & Identitas Guru/Users
-│       │   └── user-service.js         # CRUD & Role Management
+│       │   ├── admin-service.js    # CRUD kelas & siswa
+│       │   ├── attendance-service.js
+│       │   ├── auth-service.js
+│       │   ├── config.example.js   # Template konfigurasi (commit)
+│       │   ├── config.js           # Konfigurasi aktif (gitignored)
+│       │   ├── profile-service.js
+│       │   └── user-service.js
 │       ├── pages/
-│       │   ├── index.js                # Logic Dashboard & Input Absensi (FIXED)
-│       │   ├── admin.js                # Logic Manajemen Kelas & Siswa (FIXED)
-│       │   └── users.js                # Logic Manajemen User & Client-side Caching
+│       │   ├── index.js            # Dashboard & input absensi
+│       │   ├── admin.js            # Manajemen kelas & siswa
+│       │   └── users.js            # Manajemen user (super admin)
 │       └── utils/
-│           ├── auth-guard.js           # Middleware Proteksi Route & Role
-│           ├── pdf-helper.js           # Export PDF (jsPDF & AutoTable)
-│           └── ui.js                   # Modal, Toast, & Feedback Visual
-├── index.html                          # Dashboard Absensi Harian
-├── admin.html                          # Manajemen Data Master (Admin Only)
-├── users.html                          # Manajemen User & Akses (Admin Only)
-├── login.html                          # Halaman Autentikasi Google
-├── firebase.json                       # Konfigurasi Firebase Hosting
-└── 404.html                            # Custom Error Page Firebase
+│           ├── auth-guard.js
+│           ├── cache-utils.js      # Draft, clear cache, kepsek cache
+│           ├── sync-queue.js       # Offline write queue & retry
+│           ├── tab-sync.js         # BroadcastChannel multi-tab
+│           ├── pdf-helper.js
+│           └── ui.js
+├── scripts/
+│   └── inject-cache-version.js     # Cache-bust + generate sw.js
+├── index.html                      # Dashboard absensi
+├── admin.html                      # Master data kelas & siswa
+├── users.html                      # Manajemen pengguna
+├── login.html
+├── 404.html
+├── firebase.json
+├── tailwind.config.js
+├── package.json
+└── sw.js                           # Service Worker (generated, gitignored)
 ```
 
 ---
 
 ## Cara Install & Setup
 
-### 1. Setup Firebase Console
+### Prasyarat
 
-1. Buat proyek di **Firebase Console**
-2. Aktifkan **Authentication → Google Sign-In**
-3. Aktifkan **Firestore Database (Production Mode)**
+* Node.js 20+
+* Akun Firebase dengan project aktif
+* Firebase CLI (`npx firebase-tools@latest login`)
 
----
+### 1. Clone & Install
 
-<!-- ### 2. Konfigurasi Security Rules (Wajib)
-
-Gunakan kode ini di Firebase Console bagian **Firestore > Rules** Kode ini mengatur hak akses berdasarkan role (admin/viewer) dan status verifikasi user.
-
-```js
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // --- GLOBAL HELPERS ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    // Mengambil data user saat ini untuk cek Role/Status
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    // --- RULES ---
-    // 1. Koleksi Users (Kunci Performa Login)
-    match /users/{userId} {
-      // Izinkan baca tanpa 'isVerified' agar proses login/verifikasi lancar
-      allow read: if isSignedIn();
-      allow create: if request.auth.uid == userId;
-      // Update role/isVerified hanya boleh oleh Admin
-      allow update: if isAdmin() || (
-        request.auth.uid == userId && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified'])
-      );
-      allow delete: if isAdmin() && request.auth.uid != userId;
-    }
-    // 2. Data Master & Settings
-    match /kelas/{kelasId} {
-      allow read: if isVerified();
-      allow write: if isAdmin();
-    }
-    
-    match /siswa/{siswaId} {
-      allow read: if isVerified();
-      allow write: if isAdmin();
-    }
-    match /settings/{docId} {
-      allow read: if isVerified();
-      allow write: if isAdmin();
-    }
-    // 3. Rekap Absensi
-    match /rekap_absensi/{docId} {
-      allow read, create: if isVerified();
-      allow delete: if isAdmin();
-      allow update: if isAdmin() || (
-        isVerified() && 
-        resource.data.is_locked == false && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['is_locked'])
-      );
-    }
-    // --- REUSEABLE LOGIC HELPERS ---
-    function isAdmin() {
-      return isSignedIn() && getUserData().role == 'admin';
-    }
-    function isVerified() {
-      let data = getUserData();
-      return isSignedIn() && (data.isVerified == true || data.role == 'admin');
-    }
-  }
-}
-``` -->
-
----
-
-### 2. Koneksi Firebase ke Kode
-
-Edit file `assets/js/firebase/config.js`:
-
-```js
-const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "project-id.firebaseapp.com",
-  projectId: "project-id"
-};
+```bash
+git clone <repo-url>
+cd absensi
+npm install
 ```
 
----
+### 2. Setup Firebase Console
 
-### 3. Setup Admin Pertama (God Mode)
+1. Buat proyek di [Firebase Console](https://console.firebase.google.com/)
+2. Aktifkan **Authentication → Google Sign-In**
+3. Aktifkan **Firestore Database** (Production Mode)
+4. Daftarkan Web App, salin konfigurasi Firebase
 
-Karena sistem menggunakan **Approval**, admin pertama perlu diaktifkan manual:
+### 3. Konfigurasi Lokal
 
-1. Login melalui `login.html`
+Salin template konfigurasi:
+
+```bash
+cp assets/js/firebase/config.example.js assets/js/firebase/config.js
+```
+
+Edit `assets/js/firebase/config.js` — isi `firebaseConfig` dengan kredensial project Anda.
+
+> `config.js` di-gitignore agar API key tidak ter-commit. Di CI, file ini di-generate otomatis dari GitHub Secret `FIREBASE_CONFIG`.
+
+### 4. Build
+
+```bash
+npm run build
+```
+
+| Script | Fungsi |
+| ------ | ------ |
+| `npm run build:css` | Compile Tailwind → `assets/css/tailwind.css` |
+| `npm run build:cache` | Inject cache-bust version + generate `sw.js` |
+| `npm run build` | Keduanya sekaligus |
+| `npm run deploy:local` | Build lalu `firebase deploy --only hosting` |
+
+### 5. Setup Admin Pertama
+
+1. Login via `login.html`
 2. Buka **Firestore Console → collection `users`**
 3. Edit dokumen user Anda:
-
-   * `role` → `admin`
+   * `role` → `super_admin` (atau `admin`)
    * `isVerified` → `true`
-4. Refresh web
-5. Anda siap mengelola user lain lewat **Manajemen User**
+4. Refresh halaman — siap mengelola sistem
+
+---
+
+## Deployment
+
+### Lokal
+
+```bash
+npm run deploy:local
+```
+
+### CI/CD (Otomatis)
+
+Push ke branch `master` memicu workflow `.github/workflows/firebase-hosting-merge.yml`:
+
+1. `npm ci` + `npm run build:css`
+2. Inject `config.js` dari secret
+3. `node scripts/inject-cache-version.js`
+4. Deploy ke Firebase Hosting
+
+Pull request memicu preview deploy via `firebase-hosting-pull-request.yml`.
+
+---
+
+## Arsitektur Offline First
+
+Prioritas baca data (dari tertinggi):
+
+```text
+Draft absensi (localStorage)
+    ↓ miss
+Cache aplikasi (localStorage, dengan TTL)
+    ↓ miss
+Firestore (IndexedDB persistence)
+    ↓ miss
+Network (Firebase server)
+```
+
+Prioritas tulis data:
+
+```text
+Update cache lokal → coba Firestore
+    ↓ gagal / offline
+Enqueue ke sync queue → flush saat online
+```
+
+| Komponen | File | Fungsi |
+| -------- | ---- | ------ |
+| Cache terpusat | `cache-utils.js` | Draft per-user, clear cache, kepsek cache |
+| Sync queue | `sync-queue.js` | Retry write absensi (save/lock/unlock) |
+| Multi-tab | `tab-sync.js` | Sinkronisasi draft & invalidasi antar tab |
+| Service Worker | `sw.js` | Precache HTML, CSS, JS lokal |
+| Firestore cache | `config.js` | `persistentLocalCache` + multi-tab manager |
+
+---
+
+## Halaman Aplikasi
+
+| Halaman | Akses | Fungsi |
+| ------- | ----- | ------ |
+| `login.html` | Publik | Google Sign-In |
+| `index.html` | Guru+ | Input absensi harian, dashboard, export PDF |
+| `admin.html` | Admin+ | CRUD kelas & siswa |
+| `users.html` | Super Admin | Manajemen user, role, verifikasi |
+
+---
+
+## File yang Di-gitignore
+
+| File / Folder | Alasan |
+| ------------- | ------ |
+| `assets/js/firebase/config.js` | Berisi API key |
+| `sw.js` | Generated saat build |
+| `node_modules/` | Dependencies |
+| `.firebase/` | Cache Firebase CLI |
+| `service-account.json` | Credential deploy |
+| `.env*` | Environment lokal |
 
 ---

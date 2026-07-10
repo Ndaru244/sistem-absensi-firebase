@@ -1,7 +1,12 @@
 // File: assets/js/firebase/config.example.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { initSyncQueue } from "../utils/sync-queue.js";
 
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY_HERE",
@@ -13,7 +18,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 const auth = getAuth(app);
+
+initSyncQueue(db);
 
 export { db, auth, app };

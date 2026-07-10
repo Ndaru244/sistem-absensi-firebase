@@ -10,7 +10,7 @@
     <meta property="og:title" content="Login - SDN Sunter Agung 12 PG">
     <meta property="og:description" content="Akses manajemen kehadiran siswa berbasis Cloud.">
     <meta property="og:image" content="assets/images/logo.png">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=69b2699">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -81,9 +81,9 @@
     </div>
 
     <script type="module">
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=__BUILD_ID__';
-        import { authService } from './assets/js/firebase/auth-service.js?v=__BUILD_ID__';
-        import { auth } from './assets/js/firebase/config.js?v=__BUILD_ID__';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=69b2699';
+        import { authService } from './assets/js/firebase/auth-service.js?v=69b2699';
+        import { auth } from './assets/js/firebase/config.js?v=69b2699';
 
         initAuthGuard({ preventLoginAccess: true });
         lucide.createIcons();
@@ -111,7 +111,7 @@
                     setLoading(true, "Menuju Admin Panel...");
                     await new Promise(resolve => setTimeout(resolve, 300));
                     window.location.replace('admin.html');
-                } else if (userData.isVerified) {
+                } else if (userData.isVerified || userData.role === 'guru') {
                     setLoading(true, "Menuju Dashboard...");
                     await new Promise(resolve => setTimeout(resolve, 300));
                     window.location.replace('index.html');
