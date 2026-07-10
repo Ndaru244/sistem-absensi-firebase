@@ -151,7 +151,7 @@
                             class="w-full pl-10 p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none transition">
                     </div>
 
-                    <!-- <div
+                    <div
                         class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
                         <input type="checkbox" id="isKhususCheck" class="w-5 h-5 accent-indigo-600 cursor-pointer">
                         <div>
@@ -162,7 +162,7 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400">Centang jika ini kelas gabungan
                                 (Agama/Olahraga)</p>
                         </div>
-                    </div> -->
+                    </div>
 
                     <button id="btnSaveKelas"
                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow flex justify-center items-center gap-2 transition active:scale-95">
@@ -214,11 +214,24 @@
                     </button>
                 </div>
 
-                <div class="mt-4 overflow-hidden rounded-lg border dark:border-gray-700">
-                    <table class="w-full text-sm text-left">
-                        <tbody id="tbodyDraft" class="divide-y dark:divide-gray-700 bg-gray-50 dark:bg-gray-900">
-                        </tbody>
-                    </table>
+                <div class="mt-4 space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
+                            <input type="text" id="filterDraftNama" placeholder="Filter antrian nama..."
+                                class="w-full pl-9 p-2 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <select id="filterDraftKelas"
+                            class="p-2 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Semua Kelas (Antrian)</option>
+                        </select>
+                    </div>
+                    <div class="overflow-hidden rounded-lg border dark:border-gray-700">
+                        <table class="w-full text-sm text-left">
+                            <tbody id="tbodyDraft" class="divide-y dark:divide-gray-700 bg-gray-50 dark:bg-gray-900">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -227,7 +240,12 @@
                 <div
                     class="p-6 border-b dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <h2 class="text-lg font-bold">Data Siswa Terdaftar</h2>
-                    <div class="flex gap-2 w-full sm:w-auto">
+                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <div class="relative flex-1 sm:w-44">
+                            <i data-lucide="search" class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400"></i>
+                            <input type="text" id="filterNamaSiswa" placeholder="Cari nama..."
+                                class="w-full pl-8 p-2 rounded-lg border bg-white dark:bg-gray-800 dark:border-gray-600 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
                         <select id="filterKelasSiswa"
                             class="flex-1 sm:w-48 p-2 rounded-lg border bg-blue-50 dark:bg-gray-800 dark:border-gray-600 text-sm font-semibold text-blue-900 dark:text-blue-100 focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="" disabled selected>-- Pilih Kelas --</option>
@@ -270,13 +288,17 @@
                     <div class="text-sm font-medium text-gray-500">Terpilih: <span id="countSelected"
                             class="text-indigo-600 dark:text-indigo-400 font-bold">0</span></div>
                     <div class="flex gap-2">
+                        <button id="btnTambahSiswaMapel" style="display:none;"
+                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded flex items-center gap-2 transition">
+                            <i data-lucide="user-plus" class="w-3 h-3"></i> TAMBAH SISWA
+                        </button>
                         <button id="btnPromoteClass" disabled
                             class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
                             <i data-lucide="trending-up" class="w-3 h-3"></i> PROMOTE
                         </button>
                         <button id="btnDeleteSelected" disabled
                             class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                            <i data-lucide="trash-2" class="w-3 h-3"></i> HAPUS
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> <span id="btnDeleteSelectedLabel">HAPUS</span>
                         </button>
                     </div>
                 </div>
