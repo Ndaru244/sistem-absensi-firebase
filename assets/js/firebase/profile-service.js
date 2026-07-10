@@ -114,7 +114,7 @@ export const profileService = {
 
     // Check if admin
     isAdmin(profile) {
-        return profile?.role === 'admin';
+        return profile?.role === 'admin' || profile?.role === 'super_admin';
     },
 
     // Clear profile cache (for logout)

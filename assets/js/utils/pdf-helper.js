@@ -1,4 +1,5 @@
 import { auth } from "../firebase/config.js";
+import { SCHOOL_NAME } from "./constants.js";
 import { doc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 // Helper: Setup Dokumen PDF
@@ -69,7 +70,7 @@ const drawLetterhead = (doc) => {
   doc.text("DINAS PENDIDIKAN", centerX, 20, { align: "center" });
 
   doc.setFont("helvetica", "bold").setFontSize(14);
-  doc.text("SEKOLAH DASAR NEGERI SUNTER AGUNG 12 PG", centerX, 26, {
+  doc.text(SCHOOL_NAME, centerX, 26, {
     align: "center",
   });
 
@@ -236,7 +237,8 @@ export const exportMonthlyPDF = (
       { align: "center" }
     );
 
-  const days = new Date(month.split("-")[0], month.split("-")[1], 0).getDate();
+  const [year, monthNum] = month.split("-").map(Number);
+  const days = new Date(year, monthNum, 0).getDate();
   const map = {};
 
   reports.forEach((r) => {

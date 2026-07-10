@@ -4,105 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistem Absensi Digital</title>
-    <meta name="description" content="Masuk ke Sistem Absensi Digital untuk mengelola kehadiran siswa secara real-time.">
+    <title>Login - SDN Sunter Agung 12 PG</title>
+    <meta name="description" content="Masuk ke sistem absensi SDN Sunter Agung 12 PG untuk mengelola kehadiran siswa secara real-time.">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <meta property="og:title" content="Login Absensi Digital">
+    <meta property="og:title" content="Login - SDN Sunter Agung 12 PG">
     <meta property="og:description" content="Akses manajemen kehadiran siswa berbasis Cloud.">
     <meta property="og:image" content="assets/images/logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { darkbg: '#0f172a', darkcard: '#1e293b' } } }
-        }
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         }
     </script>
-    <style>
-        .loader {
-            border-top-color: #3b82f6;
-            animation: spinner 1.5s linear infinite;
-        }
-
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
 </head>
 
-<body class="bg-gray-100 dark:bg-darkbg text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center p-4">
-
-    <!-- Preloader -->
-    <style>
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-
-        html.dark #preloader {
-            background-color: #0f172a;
-        }
-
-        .loader-circle {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        .loader-text {
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 800;
-            color: #4f46e5;
-            letter-spacing: 4px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        body.loading {
-            overflow: hidden !important;
-        }
-    </style>
+<body class="app-shell min-h-screen flex items-center justify-center p-4">
 
     <div id="preloader">
         <div class="loader-circle"></div>
-        <div class="loader-text">MEMUAT...</div>
+        <div class="loader-text">Memuat</div>
     </div>
 
     <script>
@@ -111,64 +32,60 @@
             const preloader = document.getElementById('preloader');
             if (preloader) {
                 preloader.style.opacity = '0';
-                setTimeout(function () {
+                setTimeout(() => {
                     preloader.style.display = 'none';
                     document.body.classList.remove('loading');
-                }, 500);
+                }, 300);
             }
         }
-        if (document.readyState === 'complete') {
-            hidePreloader();
-        } else {
+        if (document.readyState === 'complete') hidePreloader();
+        else {
             window.addEventListener('load', hidePreloader);
-            // Safety timeout: sembunyikan preloader setelah 3 detik jika load event belum terpanggil
             setTimeout(hidePreloader, 3000);
         }
     </script>
 
-    <div class="max-w-md w-full bg-white dark:bg-darkcard rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden fade-in">
-    <div class="p-8">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gray-50 dark:bg-gray-800 mb-4 shadow-inner">
-                <img src="assets/images/logo.png" alt="Logo Absensi" class="w-16 h-16 object-contain">
+    <div class="card w-full max-w-sm animate-fade-in">
+        <div class="card-body p-8">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-slate-100 dark:bg-slate-800 mb-4">
+                    <img src="assets/images/logo.png" alt="Logo Absensi" class="w-12 h-12 object-contain">
+                </div>
+                <h1 class="text-xl font-semibold text-slate-900 dark:text-white">SDN Sunter Agung 12 PG</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Masuk untuk mengelola kehadiran siswa</p>
             </div>
-            
-            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight uppercase">ABSENSI</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Masuk untuk mengelola kehadiran siswa</p>
-        </div>
 
-        <div class="space-y-4">
-            <button id="btnGoogleLogin"
-                class="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-xl border border-gray-300 shadow-sm transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                <img id="g-logo" src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png"
-                    class="w-5 h-5" alt="Google Logo">
-                <div id="loader-icon" class="hidden loader w-5 h-5 border-2 border-gray-200 rounded-full"></div>
-                <span id="btn-text">Masuk dengan Google</span>
-            </button>
+            <div class="space-y-4">
+                <button id="btnGoogleLogin"
+                    class="btn-secondary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <img id="g-logo" src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png"
+                        class="w-5 h-5" alt="Google Logo">
+                    <div id="loader-icon" class="hidden w-5 h-5 border-2 border-slate-300 border-t-primary-600 rounded-full animate-spin"></div>
+                    <span id="btn-text">Masuk dengan Google</span>
+                </button>
 
-            <div id="status-message" class="hidden text-center text-sm">
-                <div class="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400">
-                    <div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span id="status-text">Memverifikasi...</span>
+                <div id="status-message" class="hidden text-center text-sm">
+                    <div class="flex items-center justify-center gap-2 text-primary-600 dark:text-primary-400">
+                        <div class="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span id="status-text">Memverifikasi...</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="mt-8 pt-6 border-t dark:border-gray-700 text-center">
-            <p class="text-xs text-gray-400 flex justify-center items-center gap-1">
-                <i data-lucide="life-buoy" class="w-3 h-3"></i> Pusat Bantuan: IT Support Absensi
-            </p>
+            <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-center">
+                <p class="text-xs text-slate-400 flex justify-center items-center gap-1">
+                    <i data-lucide="life-buoy" class="w-3 h-3"></i> IT Support Absensi
+                </p>
+            </div>
         </div>
     </div>
-</div>
 
     <script type="module">
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js';
-        import { authService } from './assets/js/firebase/auth-service.js';
-        import { auth } from './assets/js/firebase/config.js';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=__BUILD_ID__';
+        import { authService } from './assets/js/firebase/auth-service.js?v=__BUILD_ID__';
+        import { auth } from './assets/js/firebase/config.js?v=__BUILD_ID__';
 
         initAuthGuard({ preventLoginAccess: true });
-
         lucide.createIcons();
 
         const btn = document.getElementById('btnGoogleLogin');
@@ -177,25 +94,20 @@
         const gLogo = document.getElementById('g-logo');
         const statusMessage = document.getElementById('status-message');
         const statusText = document.getElementById('status-text');
-
         let isProcessing = false;
 
         btn.addEventListener('click', async () => {
             if (isProcessing) return;
-            
             isProcessing = true;
             setLoading(true, "Membuka jendela login...");
 
             try {
                 const userData = await authService.loginWithGoogle();
-
-                if (!userData) {
-                    throw new Error('Gagal mendapatkan data user');
-                }
+                if (!userData) throw new Error('Gagal mendapatkan data user');
 
                 setLoading(true, "Memverifikasi akun...");
 
-                if (userData.role === 'admin') {
+                if (userData.role === 'admin' || userData.role === 'super_admin') {
                     setLoading(true, "Menuju Admin Panel...");
                     await new Promise(resolve => setTimeout(resolve, 300));
                     window.location.replace('admin.html');
@@ -209,17 +121,11 @@
                     resetBtn();
                     isProcessing = false;
                 }
-
             } catch (error) {
-                if (error.code === 'auth/popup-closed-by-user') {
-                    console.log("User closed login window");
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    console.log("Popup request cancelled");
-                } else {
+                if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
                     console.error('Login error:', error);
                     alert("Gagal Masuk: " + (error.message || 'Unknown error'));
                 }
-                
                 resetBtn();
                 isProcessing = false;
             }
@@ -227,7 +133,6 @@
 
         function setLoading(show, message = "Memproses...") {
             btn.disabled = show;
-            
             if (show) {
                 btnText.innerText = message;
                 gLogo.classList.add('hidden');
@@ -242,12 +147,9 @@
             }
         }
 
-        function resetBtn() {
-            setLoading(false);
-        }
+        function resetBtn() { setLoading(false); }
 
-        const preloadLinks = ['admin.html', 'index.html'];
-        preloadLinks.forEach(href => {
+        ['admin.html', 'index.html'].forEach(href => {
             const link = document.createElement('link');
             link.rel = 'prefetch';
             link.href = href;

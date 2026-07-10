@@ -4,83 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - Manajemen Pengguna</title>
+    <title>Manajemen Pengguna - SDN Sunter Agung 12 PG</title>
     <meta name="description" content="Kontrol akses pengguna, verifikasi akun, dan pengaturan role admin.">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="robots" content="noindex, nofollow">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { darkbg: '#0f172a', darkcard: '#1e293b' } } }
-        }
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         }
     </script>
 </head>
 
-<body class="bg-gray-50 dark:bg-darkbg text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300">
-
-    <!-- Preloader -->
-    <style>
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-
-        html.dark #preloader {
-            background-color: #0f172a;
-        }
-
-        .loader-circle {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        .loader-text {
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 800;
-            color: #4f46e5;
-            letter-spacing: 4px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        body.loading {
-            overflow: hidden !important;
-        }
-    </style>
+<body class="app-shell">
 
     <div id="preloader">
         <div class="loader-circle"></div>
-        <div class="loader-text">MEMUAT...</div>
+        <div class="loader-text">Memuat</div>
     </div>
 
     <script>
@@ -89,74 +30,64 @@
             const preloader = document.getElementById('preloader');
             if (preloader) {
                 preloader.style.opacity = '0';
-                setTimeout(function () {
+                setTimeout(() => {
                     preloader.style.display = 'none';
                     document.body.classList.remove('loading');
-                }, 500);
+                }, 300);
             }
         }
-        if (document.readyState === 'complete') {
-            hidePreloader();
-        } else {
+        if (document.readyState === 'complete') hidePreloader();
+        else {
             window.addEventListener('load', hidePreloader);
-            // Safety timeout: sembunyikan preloader setelah 3 detik jika load event belum terpanggil
             setTimeout(hidePreloader, 3000);
         }
     </script>
 
     <div id="navbar-container"></div>
-    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        
-        <div class="mb-8">
-            <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-                <i data-lucide="users" class="w-8 h-8 text-indigo-600"></i>
+
+    <main class="app-main">
+        <div class="page-header">
+            <h1 class="page-title flex items-center gap-2">
+                <i data-lucide="users" class="w-5 h-5 text-primary-600"></i>
                 Manajemen Pengguna
             </h1>
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Kelola hak akses (Role), verifikasi akun guru baru, dan hapus pengguna yang tidak aktif.
-            </p>
+            <p class="page-subtitle">Kelola hak akses, verifikasi akun guru, dan hapus pengguna tidak aktif.</p>
         </div>
 
-        <div class="bg-white dark:bg-darkcard rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                
-                <div class="relative w-full sm:w-72">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
-                    <input type="text" id="searchUser" placeholder="Cari Nama / Email..." 
-                        class="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition">
+        <div class="card overflow-hidden">
+            <div class="card-header">
+                <div class="input-icon w-full sm:w-72">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="searchUser" placeholder="Cari nama atau email..." class="input">
                 </div>
-
-                <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                        Total: <span id="totalUsersCount" class="text-indigo-600 dark:text-indigo-400">0</span> User
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-500">
+                        Total: <span id="totalUsersCount" class="font-semibold text-slate-900 dark:text-white">0</span>
                     </span>
-
-                    <button id="btnRefreshUsers"
-                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="btnRefreshUsers" class="btn-primary btn-sm">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                        <span id="refreshText">Refresh Data</span>
+                        <span id="refreshText">Refresh</span>
                     </button>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-800 hidden md:table-header-group">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead class="hidden md:table-header-group">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User Profile</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role Access</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Verifikasi</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Kontrol</th>
+                            <th>Pengguna</th>
+                            <th>Role</th>
+                            <th class="text-center">Verifikasi</th>
+                            <th class="text-right">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="userTableBody" class="bg-white dark:bg-darkcard divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody id="userTableBody">
                         <tr>
-                            <td colspan="4" class="p-8 text-center text-gray-400">
-                                <div class="animate-pulse flex justify-center gap-2">
-                                    <span class="h-2 w-2 bg-gray-400 rounded-full"></span>
-                                    <span class="h-2 w-2 bg-gray-400 rounded-full"></span>
-                                    <span class="h-2 w-2 bg-gray-400 rounded-full"></span>
+                            <td colspan="4" class="p-8 text-center text-slate-400">
+                                <div class="flex justify-center gap-1.5">
+                                    <span class="h-1.5 w-1.5 bg-slate-400 rounded-full animate-pulse"></span>
+                                    <span class="h-1.5 w-1.5 bg-slate-400 rounded-full animate-pulse"></span>
+                                    <span class="h-1.5 w-1.5 bg-slate-400 rounded-full animate-pulse"></span>
                                 </div>
                             </td>
                         </tr>
@@ -164,21 +95,25 @@
                 </table>
             </div>
 
-            <div class="bg-gray-50 dark:bg-gray-800/50 p-3 text-center border-t border-gray-200 dark:border-gray-700">
-                <p class="text-xs text-gray-400 flex justify-center items-center gap-1">
-                    <i data-lucide="lock" class="w-3 h-3"></i> Only Super Admin can access this page
+            <div class="card-footer text-center">
+                <p class="text-xs text-slate-400 flex justify-center items-center gap-1">
+                    <i data-lucide="lock" class="w-3 h-3"></i> Hanya Super Admin
                 </p>
             </div>
         </div>
     </main>
 
     <script type="module">
-        // Import Logic Utama
-        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=2.1';
-        import './assets/js/pages/users.js?v=2.1';
-        
+        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=__BUILD_ID__';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=__BUILD_ID__';
+        import { initNavbarProfile } from './assets/js/components/navbar.js?v=__BUILD_ID__';
+
         window.toggleTheme = toggleTheme;
         initNavbar('users');
+        initAuthGuard({ requireSuperAdmin: true });
+        initNavbarProfile();
+
+        await import('./assets/js/pages/users.js?v=__BUILD_ID__');
     </script>
 </body>
 

@@ -1,7 +1,8 @@
 import { db } from "../firebase/config.js";
-import { doc, getDocs, getDoc, collection } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { doc, getDocs, getDoc, collection, setDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { adminService } from "../firebase/admin-service.js";
 import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js";
 
 const el = (id) => document.getElementById(id);
 const state = {
@@ -133,6 +134,7 @@ window.openSchoolSettings = async function () {
     try {
       // Simpan ke Firestore
       await setDoc(docRef, { nama, nip }, { merge: true });
+      clearKepalaSekolahCache();
       showToast("Data Kepala Sekolah berhasil disimpan.", "success");
     } catch (error) {
       console.error(error);
@@ -387,7 +389,7 @@ function openPromoteModal() {
     modal.classList.remove("hidden");
     setTimeout(() => {
       modal.classList.remove("opacity-0");
-      modal.querySelector("div").classList.remove("scale-95");
+      modal.querySelector(".modal-panel").classList.remove("scale-95");
       modal.querySelector("div").classList.add("scale-100");
     }, 10);
   }
@@ -398,7 +400,7 @@ function closePromoteModal() {
   if (modal) {
     modal.classList.add("opacity-0");
     modal.querySelector("div").classList.remove("scale-100");
-    modal.querySelector("div").classList.add("scale-95");
+    modal.querySelector(".modal-panel").classList.add("scale-95");
     setTimeout(() => modal.classList.add("hidden"), 300);
   }
 }

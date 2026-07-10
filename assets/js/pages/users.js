@@ -1,15 +1,11 @@
 import { userService } from '../firebase/user-service.js';
 import { showToast, showConfirm, showCustomModal, initTheme } from '../utils/ui.js';
-import { initNavbarProfile } from '../components/navbar.js';
-import { initAuthGuard } from '../utils/auth-guard.js';
 
 let allUsers = [];
 
 // --- INITIALIZATION ---
 async function initPage() {
     initTheme();
-    await initAuthGuard({ requireSuperAdmin: true });
-    initNavbarProfile();
     setupEventListeners();
     await loadUsers();
 }
@@ -55,24 +51,24 @@ function updateRefreshButton(state) {
     const text = document.getElementById("refreshText");
     if (!btn) return;
 
-    btn.className = "inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg shadow transition-all active:scale-95 text-white transition-colors duration-300";
+    btn.className = "btn btn-sm";
 
     if (state === 'loading') {
-        btn.classList.add("bg-indigo-400", "cursor-not-allowed");
+        btn.classList.add("btn-primary", "opacity-60", "cursor-not-allowed");
         btn.disabled = true;
         if (icon) { icon.setAttribute("data-lucide", "loader-2"); icon.classList.add("animate-spin"); }
         if (text) text.textContent = "Memuat...";
     } else if (state === 'success') {
-        btn.classList.add("bg-emerald-600");
+        btn.classList.add("btn-success");
         btn.disabled = false;
         if (icon) { icon.setAttribute("data-lucide", "check"); icon.classList.remove("animate-spin"); }
         if (text) text.textContent = "Sukses!";
         setTimeout(() => updateRefreshButton('idle'), 2000);
     } else {
-        btn.classList.add("bg-indigo-600", "hover:bg-indigo-700");
+        btn.classList.add("btn-primary");
         btn.disabled = false;
         if (icon) { icon.setAttribute("data-lucide", "refresh-cw"); icon.classList.remove("animate-spin"); }
-        if (text) text.textContent = "Refresh Data";
+        if (text) text.textContent = "Refresh";
     }
     if (window.lucide) window.lucide.createIcons();
 }
@@ -96,76 +92,47 @@ function renderTable(users) {
     });
 
     tbody.innerHTML = sortedUsers.map(user => {
-        let badgeClass = 'bg-gray-100 text-gray-600 border-gray-200'; // Default: Viewer
-        let roleLabel = 'VIEWER';
+        let badgeClass = 'badge-neutral';
+        let roleLabel = 'Viewer';
 
         if (user.role === 'super_admin') {
-            badgeClass = 'bg-rose-100 text-rose-700 border-rose-200';
-            roleLabel = 'SUPER ADMIN';
+            badgeClass = 'badge-danger';
+            roleLabel = 'Super Admin';
         } else if (user.role === 'admin') {
-            badgeClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
-            roleLabel = 'GURU PIKET';
+            badgeClass = 'badge-primary';
+            roleLabel = 'Guru Piket';
         } else if (user.role === 'guru') {
-            // WARNA BARU UNTUK GURU
-            badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
-            roleLabel = 'GURU KELAS';
+            badgeClass = 'badge-info';
+            roleLabel = 'Guru Kelas';
         }
 
         const photoUrl = user.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`;
 
         return `
-        <tr class="flex flex-col md:table-row bg-white dark:bg-darkcard mb-4 md:mb-0 rounded-xl md:rounded-none shadow-sm md:shadow-none border border-gray-200 md:border-b dark:border-gray-700 transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            
-            <td class="block md:table-cell px-4 py-3 md:px-6 md:py-4 border-b md:border-none border-gray-100 dark:border-gray-700">
-                <div class="flex items-center cursor-pointer" onclick="window.handleEditUser('${user.id}')">
-                    <img class="h-10 w-10 md:h-10 md:w-10 rounded-full object-cover border border-gray-200" src="${photoUrl}" alt="">
-                    <div class="ml-3 md:ml-4">
-                        <div class="text-sm font-bold text-gray-900 dark:text-white">${user.nama || 'Tanpa Nama'}</div>
-                        <div class="text-xs text-gray-500 font-mono break-all">${user.email}</div>
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <td>
+                <div class="flex items-center cursor-pointer gap-3" onclick="window.handleEditUser('${user.id}')">
+                    <img class="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-700" src="${photoUrl}" alt="">
+                    <div>
+                        <div class="text-sm font-medium text-slate-900 dark:text-white">${user.nama || 'Tanpa Nama'}</div>
+                        <div class="text-xs text-slate-500 break-all">${user.email}</div>
                     </div>
                 </div>
             </td>
-
-            <td class="block md:table-cell px-4 py-2 md:px-6 md:py-4">
-                <span class="md:hidden text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Role Akses</span>
-                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded-full border ${badgeClass}">
-                    ${roleLabel}
-                </span>
-            </td>
-
-            <td class="block md:table-cell px-4 py-2 md:px-6 md:py-4">
-                <div class="flex items-center justify-between md:justify-center w-full">
-                    <span class="md:hidden text-xs font-semibold text-gray-400 uppercase tracking-wider">Status Verifikasi</span>
-                    
-                    ${user.isVerified
-                ? `<button onclick="window.handleVerify('${user.id}', true)" class="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1 md:p-1.5 rounded-full md:rounded-full transition active:scale-95 border border-emerald-100">
-                            <i data-lucide="check-circle-2" class="w-4 h-4 md:w-5 md:h-5"></i>
-                            <span class="md:hidden text-xs font-bold">Terverifikasi</span>
-                        </button>`
-                : `<button onclick="window.handleVerify('${user.id}', false)" class="flex items-center gap-2 text-gray-500 bg-gray-100 px-3 py-1 md:p-1.5 rounded-full md:rounded-full transition active:scale-95 border border-gray-200">
-                            <i data-lucide="circle" class="w-4 h-4 md:w-5 md:h-5"></i>
-                            <span class="md:hidden text-xs font-bold">Belum Aktif</span>
-                        </button>`
+            <td><span class="${badgeClass}">${roleLabel}</span></td>
+            <td class="text-center">
+                ${user.isVerified
+                ? `<button onclick="window.handleVerify('${user.id}', true)" class="badge-success"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Terverifikasi</button>`
+                : `<button onclick="window.handleVerify('${user.id}', false)" class="badge-neutral"><i data-lucide="circle" class="w-3.5 h-3.5"></i> Belum Aktif</button>`
             }
-                </div>
             </td>
-
-            <td class="block md:table-cell px-4 py-3 md:px-6 md:py-4 border-t md:border-none border-gray-100 dark:border-gray-700">
-                <div class="flex items-center justify-end gap-3 md:gap-2">
-                    <span class="md:hidden text-xs font-semibold text-gray-400 uppercase mr-auto">Tindakan</span>
-                    
-                    <button onclick="window.handleEditUser('${user.id}')" 
-                        class="flex-1 md:flex-none flex items-center justify-center gap-2 text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 md:p-2 rounded-lg transition active:scale-95 border border-blue-100 shadow-sm md:shadow-none" 
-                        title="Edit Data">
+            <td class="text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button onclick="window.handleEditUser('${user.id}')" class="btn-ghost btn-sm btn-icon" title="Edit">
                         <i data-lucide="pencil" class="w-4 h-4"></i>
-                        <span class="md:hidden text-xs font-bold">Edit</span>
                     </button>
-                    
-                    <button onclick="window.handleDeleteUser('${user.id}', '${user.nama}')" 
-                        class="flex-1 md:flex-none flex items-center justify-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 md:p-2 rounded-lg transition active:scale-95 border border-red-100 shadow-sm md:shadow-none" 
-                        title="Hapus User">
+                    <button onclick="window.handleDeleteUser('${user.id}', '${user.nama}')" class="btn-ghost btn-sm btn-icon text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" title="Hapus">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        <span class="md:hidden text-xs font-bold">Hapus</span>
                     </button>
                 </div>
             </td>

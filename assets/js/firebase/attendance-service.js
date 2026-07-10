@@ -1,17 +1,51 @@
-import { db } from './config.js';
+import { db, auth } from './config.js';
 import {
     collection, getDocs, doc, getDoc, setDoc, query, where, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { readDraft, removeDraft } from '../utils/cache-utils.js';
+
+const queryMemCache = new Map();
+const QUERY_CACHE_TTL = 1000 * 60 * 3;
+
+function getQueryMemCache(key) {
+    const item = queryMemCache.get(key);
+    if (!item) return null;
+    if (Date.now() - item.timestamp > QUERY_CACHE_TTL) {
+        queryMemCache.delete(key);
+        return null;
+    }
+    return item.data;
+}
+
+function setQueryMemCache(key, data) {
+    queryMemCache.set(key, { data, timestamp: Date.now() });
+}
+
+function clearQueryMemCache() {
+    queryMemCache.clear();
+}
 
 // ===== ATTENDANCE CACHE MANAGER =====
 const AttendanceCache = {
     PREFIX: 'attendance_',
+    REKAP_TTL: 1000 * 60 * 10,
+    REKAP_LOCKED_TTL: 1000 * 60 * 60,
 
     setRekap(docId, data) {
         try { localStorage.setItem(this.PREFIX + docId, JSON.stringify({ data, timestamp: Date.now() })); } catch (e) { }
     },
     getRekap(docId) {
-        try { const raw = localStorage.getItem(this.PREFIX + docId); return raw ? JSON.parse(raw).data : null; } catch { return null; }
+        try {
+            const raw = localStorage.getItem(this.PREFIX + docId);
+            if (!raw) return null;
+            const item = JSON.parse(raw);
+            const ttl = item.data?.is_locked ? this.REKAP_LOCKED_TTL : this.REKAP_TTL;
+            if (Date.now() - item.timestamp > ttl) {
+                this.removeRekap(docId);
+                return null;
+            }
+            return item.data;
+        } catch { return null; }
     },
     setMaster(kelasId, data) {
         try { localStorage.setItem(this.PREFIX + 'master_' + kelasId, JSON.stringify({ data, timestamp: Date.now() })); } catch (e) { }
@@ -29,6 +63,10 @@ const AttendanceCache = {
         } catch { return null; }
     },
     removeMaster(kelasId) { localStorage.removeItem(this.PREFIX + 'master_' + kelasId); },
+    removeRekap(docId) { localStorage.removeItem(this.PREFIX + docId); },
+    removeMonthlyReport(kelasId, monthStr) {
+        localStorage.removeItem(this.PREFIX + `monthly_${kelasId}_${monthStr}`);
+    },
     setMonthlyReport(kelasId, monthStr, data) {
         try {
             const key = `monthly_${kelasId}_${monthStr}`;
@@ -61,9 +99,10 @@ export const attendanceService = {
     // 1. GET REKAP (Draft > Cache > Firebase)
     async getRekap(docId, forceRefresh = false) {
         try {
-            const draft = localStorage.getItem('absensi_draft');
-            if (draft && !forceRefresh) {
-                const parsed = JSON.parse(draft);
+            const uid = auth.currentUser?.uid;
+            const draftRaw = uid ? readDraft(uid) : null;
+            if (draftRaw && !forceRefresh) {
+                const parsed = JSON.parse(draftRaw);
                 if (`${parsed.tanggal}_${parsed.kelas}` === docId) return parsed;
             }
             
@@ -126,7 +165,9 @@ export const attendanceService = {
             data.updated_at = Timestamp.now();
             await setDoc(ref, data, { merge: true });
             AttendanceCache.setRekap(docId, data);
-            localStorage.removeItem('absensi_draft');
+            AttendanceCache.removeMonthlyReport(data.kelas, data.tanggal.slice(0, 7));
+            clearQueryMemCache();
+            if (auth.currentUser?.uid) removeDraft(auth.currentUser.uid);
         } catch (error) { throw error; }
     },
 
@@ -142,6 +183,7 @@ export const attendanceService = {
                 cached.locked_at = Timestamp.now();
                 AttendanceCache.setRekap(docId, cached);
             }
+            clearQueryMemCache();
         } catch (error) { throw error; }
     },
     async unlockRekap(docId) {
@@ -156,6 +198,7 @@ export const attendanceService = {
                 cached.is_locked = false;
                 AttendanceCache.setRekap(docId, cached);
             }
+            clearQueryMemCache();
             console.log('Rekap unlocked');
         } catch (error) {
             console.error("Error unlocking rekap:", error);
@@ -171,7 +214,9 @@ export const attendanceService = {
                 if (cached) return cached;
             }
             const startStr = `${monthStr}-01`;
-            const endStr = `${monthStr}-31`;
+            const [y, m] = monthStr.split("-").map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
+            const endStr = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
             const q = query(
                 collection(db, "rekap_absensi"),
                 where("kelas", "==", kelasId),
@@ -188,15 +233,25 @@ export const attendanceService = {
     // 6. GET REKAP BY DATE (Untuk Dashboard Status Kelas)
     async getRekapByDate(dateStr) {
         try {
+            const cacheKey = `date_${dateStr}`;
+            const cached = getQueryMemCache(cacheKey);
+            if (cached) return cached;
+
             const q = query(collection(db, "rekap_absensi"), where("tanggal", "==", dateStr));
             const snap = await getDocs(q);
-            return snap.docs.map(d => d.data());
+            const data = snap.docs.map(d => d.data());
+            setQueryMemCache(cacheKey, data);
+            return data;
         } catch (error) { throw error; }
     },
 
     // 7. GET REKAP BY DATE RANGE (Untuk Grafik Dashboard)
     async getRekapByDateRange(startStr, endStr, kelasId = null) {
         try {
+            const cacheKey = `range_${startStr}_${endStr}_${kelasId || 'all'}`;
+            const cached = getQueryMemCache(cacheKey);
+            if (cached) return cached;
+
             let q;
             if (kelasId) {
                 q = query(
@@ -213,13 +268,18 @@ export const attendanceService = {
                 );
             }
             const snap = await getDocs(q);
-            return snap.docs.map(d => d.data());
+            const data = snap.docs.map(d => d.data());
+            setQueryMemCache(cacheKey, data);
+            return data;
         } catch (error) { throw error; }
     },
 
     invalidateRekap(docId) { AttendanceCache.removeRekap(docId); },
+    invalidateMonthlyReport(kelasId, monthStr) {
+        AttendanceCache.removeMonthlyReport(kelasId, monthStr);
+    },
     invalidateMaster(kelasId) { AttendanceCache.removeMaster(kelasId); },
-    clearAllCaches() { AttendanceCache.clearAll(); }
+    clearAllCaches() { AttendanceCache.clearAll(); clearQueryMemCache(); }
 };
 
 export { AttendanceCache };
