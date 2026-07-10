@@ -1,8 +1,8 @@
-import { db } from "../firebase/config.js";
+import { db } from "../firebase/config.js?v=69b2699";
 import { doc, getDocs, getDoc, collection, setDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { adminService } from "../firebase/admin-service.js";
-import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js";
-import { clearKepalaSekolahCache } from "../utils/cache-utils.js";
+import { adminService } from "../firebase/admin-service.js?v=69b2699";
+import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=69b2699";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=69b2699";
 
 const el = (id) => document.getElementById(id);
 const state = {

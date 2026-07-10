@@ -1,15 +1,16 @@
-import { auth, db } from "../firebase/config.js";
-import { attendanceService } from "../firebase/attendance-service.js";
-import { adminService } from "../firebase/admin-service.js";
-import { authService } from "../firebase/auth-service.js";
+import { auth, db } from "../firebase/config.js?v=69b2699";
+import { attendanceService } from "../firebase/attendance-service.js?v=69b2699";
+import { adminService } from "../firebase/admin-service.js?v=69b2699";
+import { authService } from "../firebase/auth-service.js?v=69b2699";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { showToast, showConfirm, showCustomModal } from "../utils/ui.js";
-import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js";
-import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js";
+import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=69b2699";
+import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=69b2699";
+import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=69b2699";
+import { onTabSync } from "../utils/tab-sync.js?v=69b2699";
 
 // === DASHBOARD LOGIC ===
 let attendanceChartInstance = null;
@@ -337,7 +338,10 @@ function restoreDraftForUser(uid) {
   }
 }
 
-onAuthStateChanged(auth, async (user) => {
+let indexBootstrapped = false;
+
+function registerIndexAuthListener() {
+  onAuthStateChanged(auth, async (user) => {
   if (user) {
     console.log("🔐 Auth Detected:", user.email);
     try {
@@ -383,7 +387,8 @@ onAuthStateChanged(auth, async (user) => {
     console.log("User Logged Out");
     authReady = false;
   }
-});
+  });
+}
 
 window.exportToPDF = () => {
   if (!state.localData)
@@ -404,7 +409,10 @@ window.exportToPDF = () => {
 };
 
 // --- INIT ---
-(async () => {
+function bootstrapIndexPage() {
+  if (indexBootstrapped) return;
+  indexBootstrapped = true;
+
   const datePicker = document.getElementById("datePicker");
   const statusDatePicker = document.getElementById("statusDatePicker");
   const today = new Date().toLocaleDateString("en-CA");
@@ -434,7 +442,80 @@ window.exportToPDF = () => {
 
   dashboardInitialized = true;
 
-})();
+  initTabSync();
+
+  document.getElementById("studentSearch")?.addEventListener("input", (e) => {
+    const val = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll("#tbodySiswa tr");
+    rows.forEach((row) => {
+      const name = row.querySelector("span.text-base")?.innerText.toLowerCase() || "";
+      const nis = row.querySelector("span.font-black")?.innerText.toLowerCase() || "";
+      const matches = name.includes(val) || nis.includes(val);
+      if (matches) {
+        row.classList.remove("hidden");
+        row.style.display = "";
+      } else {
+        row.classList.add("hidden");
+        row.style.display = "none";
+      }
+    });
+  });
+
+  const btnLock = document.getElementById("btnLock");
+  if (btnLock && !btnLock.dataset.bound) {
+    btnLock.dataset.bound = "1";
+    btnLock.onclick = () => {
+      if (!state.localData || !state.currentDocId) return;
+      if (state.isDirty) return showToast("Simpan perubahan dulu!", "warning");
+      showConfirm("Kunci data permanen?", async () => {
+        await attendanceService.lockRekap(state.currentDocId);
+        state.localData.is_locked = true;
+        state.monthlyCache = null;
+        handleLockState();
+        showToast("Data terkunci", "success");
+      });
+    };
+  }
+
+  registerIndexAuthListener();
+}
+
+bootstrapIndexPage();
+
+function initTabSync() {
+  onTabSync(({ type, payload }) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    if (type === 'draft:changed' && payload.uid === uid) {
+      if (!payload.docId || payload.docId !== state.currentDocId) return;
+      const saved = readDraft(uid);
+      if (!saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        if (state.isDirty) {
+          showToast('Draft diperbarui di tab lain', 'info');
+          return;
+        }
+        state.localData = parsed;
+        renderTable();
+        handleLockState();
+      } catch (e) {
+        console.warn('Tab sync draft error:', e);
+      }
+    }
+
+    if (type === 'rekap:updated' && payload.docId === state.currentDocId && !state.isDirty) {
+      window.loadRekapData(true);
+    }
+
+    if (type === 'sync:completed' && payload.docId === state.currentDocId) {
+      const dateStr = getStatusDateStr();
+      if (dateStr) window.loadDashboardStatus(dateStr);
+      window.loadDashboardChart();
+    }
+  });
+}
 
 // --- LOGIC UTAMA ---
 window.loadRekapData = async (forceRefresh = false) => {
@@ -750,21 +831,6 @@ function handleLockState() {
   }
 }
 
-const btnLock = document.getElementById("btnLock");
-if (btnLock) {
-  btnLock.onclick = () => {
-    if (!state.localData || !state.currentDocId) return;
-    if (state.isDirty) return showToast("Simpan perubahan dulu!", "warning");
-    showConfirm("Kunci data permanen?", async () => {
-      await attendanceService.lockRekap(state.currentDocId);
-      state.localData.is_locked = true;
-      state.monthlyCache = null;
-      handleLockState();
-      showToast("Data terkunci", "success");
-    });
-  };
-}
-
 // --- MONTHLY REPORT ---
 window.openMonthlyModal = () => {
   const modal = document.getElementById("modalMonthly");
@@ -964,22 +1030,3 @@ window.printMonthlyData = () => {
     }
   );
 };
-
-// --- SEARCH LOGIC ---
-document.getElementById("studentSearch")?.addEventListener("input", (e) => {
-  const val = e.target.value.toLowerCase();
-  const rows = document.querySelectorAll("#tbodySiswa tr");
-  rows.forEach((row) => {
-    const name = row.querySelector("span.text-base")?.innerText.toLowerCase() || "";
-    const nis = row.querySelector("span.font-black")?.innerText.toLowerCase() || "";
-    const matches = name.includes(val) || nis.includes(val);
-    
-    if (matches) {
-        row.classList.remove("hidden");
-        row.style.display = "";
-    } else {
-        row.classList.add("hidden");
-        row.style.display = "none";
-    }
-  });
-});

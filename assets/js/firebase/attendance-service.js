@@ -1,8 +1,10 @@
-import { db, auth } from './config.js';
+import { db, auth } from './config.js?v=69b2699';
 import {
     collection, getDocs, doc, getDoc, setDoc, query, where, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { readDraft, removeDraft } from '../utils/cache-utils.js';
+import { readDraft, removeDraft } from '../utils/cache-utils.js?v=69b2699';
+import { broadcast } from '../utils/tab-sync.js?v=69b2699';
+import { enqueue, isOnline, flushQueue } from '../utils/sync-queue.js?v=69b2699';
 
 const queryMemCache = new Map();
 const QUERY_CACHE_TTL = 1000 * 60 * 3;
@@ -160,46 +162,88 @@ export const attendanceService = {
     // 3. SAVE REKAP
     async saveRekap(docId, data) {
         try {
-            const ref = doc(db, "rekap_absensi", docId);
             if (!data.created_at) data.created_at = Timestamp.now();
             data.updated_at = Timestamp.now();
-            await setDoc(ref, data, { merge: true });
             AttendanceCache.setRekap(docId, data);
             AttendanceCache.removeMonthlyReport(data.kelas, data.tanggal.slice(0, 7));
             clearQueryMemCache();
             if (auth.currentUser?.uid) removeDraft(auth.currentUser.uid);
+
+            const writeOp = { type: 'setDoc', collection: 'rekap_absensi', docId, data, merge: true };
+            if (!isOnline()) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                return;
+            }
+
+            try {
+                const ref = doc(db, "rekap_absensi", docId);
+                await setDoc(ref, data, { merge: true });
+                broadcast('rekap:updated', { docId });
+            } catch (error) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                flushQueue(db).catch(() => {});
+            }
         } catch (error) { throw error; }
     },
 
     // 4. LOCK REKAP
     async lockRekap(docId) {
         try {
-            const ref = doc(db, "rekap_absensi", docId);
             const lockData = { is_locked: true, locked_at: Timestamp.now() };
-            await updateDoc(ref, lockData);
             const cached = AttendanceCache.getRekap(docId);
             if (cached) {
                 cached.is_locked = true;
-                cached.locked_at = Timestamp.now();
+                cached.locked_at = lockData.locked_at;
                 AttendanceCache.setRekap(docId, cached);
             }
             clearQueryMemCache();
+
+            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: lockData };
+            if (!isOnline()) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                return;
+            }
+
+            try {
+                const ref = doc(db, "rekap_absensi", docId);
+                await updateDoc(ref, lockData);
+                broadcast('rekap:updated', { docId });
+            } catch (error) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                flushQueue(db).catch(() => {});
+            }
         } catch (error) { throw error; }
     },
     async unlockRekap(docId) {
         try {
-            const ref = doc(db, "rekap_absensi", docId);
-            // Set locked false
-            await updateDoc(ref, { is_locked: false });
-
-            // Update Cache
+            const unlockData = { is_locked: false };
             const cached = AttendanceCache.getRekap(docId);
             if (cached) {
                 cached.is_locked = false;
                 AttendanceCache.setRekap(docId, cached);
             }
             clearQueryMemCache();
-            console.log('Rekap unlocked');
+
+            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: unlockData };
+            if (!isOnline()) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                return;
+            }
+
+            try {
+                const ref = doc(db, "rekap_absensi", docId);
+                await updateDoc(ref, unlockData);
+                broadcast('rekap:updated', { docId });
+            } catch (error) {
+                enqueue(writeOp);
+                broadcast('rekap:updated', { docId });
+                flushQueue(db).catch(() => {});
+            }
         } catch (error) {
             console.error("Error unlocking rekap:", error);
             throw error;

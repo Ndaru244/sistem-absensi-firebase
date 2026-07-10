@@ -2,7 +2,11 @@
   "name": "absensi",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify"
+    "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.css --minify",
+    "build:cache": "node scripts/inject-cache-version.js",
+    "build": "npm run build:css && npm run build:cache",
+    "serve:local": "npm run build && npx -y firebase-tools@latest serve --only hosting",
+    "deploy:local": "npm run build && npx -y firebase-tools@latest deploy --only hosting"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17"

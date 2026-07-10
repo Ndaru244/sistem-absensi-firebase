@@ -1,3 +1,5 @@
+import { broadcast } from './tab-sync.js?v=69b2699';
+
 const APP_PREFIXES = ['login_session_', 'profile_', 'users_', 'attendance_', 'app_cache_'];
 const APP_KEYS = ['settings_kepala_sekolah'];
 
@@ -24,15 +26,19 @@ export function writeDraft(uid, data) {
   const key = getDraftKey(uid);
   if (!key) return;
   localStorage.setItem(key, JSON.stringify(data));
+  const docId = data?.tanggal && data?.kelas ? `${data.tanggal}_${data.kelas}` : null;
+  broadcast('draft:changed', { uid, docId });
 }
 
 export function removeDraft(uid) {
   const key = getDraftKey(uid);
   if (key) localStorage.removeItem(key);
   localStorage.removeItem('absensi_draft');
+  broadcast('draft:removed', { uid });
 }
 
 export function clearAllAppCaches() {
+  broadcast('cache:cleared', {});
   Object.keys(localStorage).forEach((key) => {
     if (key === 'theme') return;
     if (key.startsWith('absensi_draft')) {

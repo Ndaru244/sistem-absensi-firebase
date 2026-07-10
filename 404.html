@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>404 - Halaman Tidak Ditemukan</title>
-  <link rel="stylesheet" href="assets/css/tailwind.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="assets/css/tailwind.css?v=69b2699">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -54,10 +54,10 @@
     </div>
 
     <div class="flex flex-col sm:flex-row gap-2 pt-2">
-      <a href="index.html" class="btn-primary flex-1 py-2.5">
+      <a href="/" class="btn-primary flex-1 py-2.5">
         <i data-lucide="home" class="w-4 h-4"></i> Dashboard
       </a>
-      <a href="login.html" class="btn-secondary flex-1 py-2.5">
+      <a href="/login.html" class="btn-secondary flex-1 py-2.5">
         <i data-lucide="log-in" class="w-4 h-4"></i> Login
       </a>
     </div>
@@ -66,6 +66,11 @@
   </div>
 
   <script>lucide.createIcons();</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function () {});
+}
+</script>
 </body>
 
 </html>

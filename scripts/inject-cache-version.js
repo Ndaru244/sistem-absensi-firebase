@@ -65,13 +65,100 @@ function walkJsFiles(dir, files = []) {
   return files;
 }
 
+const SW_SNIPPET = `<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function () {});
+}
+</script>`;
+
+function ensureSwRegistration(content) {
+  if (content.includes('serviceWorker.register')) return content;
+  if (content.includes('location.replace')) return content;
+  return content.replace('</body>', `${SW_SNIPPET}\n</body>`);
+}
+
+function generateServiceWorker(jsFiles) {
+  const precache = [
+    `/assets/css/tailwind.css?v=${BUILD_ID}`,
+    '/assets/images/logo.png',
+    ...jsFiles.map((f) => `/${path.relative(ROOT, f).replace(/\\/g, '/')}?v=${BUILD_ID}`),
+  ];
+
+  const sw = `const CACHE_NAME = 'absensi-${BUILD_ID}';
+const PRECACHE = ${JSON.stringify(precache, null, 2)};
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)).catch(() => {})
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+function isNavigation(request) {
+  return request.mode === 'navigate';
+}
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    return;
+  }
+
+  if (isNavigation(request)) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then((res) => res)
+        .catch(() => caches.match('/404.html'))
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(request).then((cached) => {
+          const network = fetch(request).then((res) => {
+            if (res.ok) cache.put(request, res.clone());
+            return res;
+          });
+          return cached || network;
+        })
+      )
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) => cached || fetch(request))
+  );
+});
+`;
+
+  fs.writeFileSync(path.join(ROOT, 'sw.js'), sw);
+  console.log('[cache-bust] generated sw.js');
+}
+
 console.log(`[cache-bust] version: ${BUILD_ID}`);
 
 for (const file of HTML_FILES) {
   const filePath = path.join(ROOT, file);
   if (!fs.existsSync(filePath)) continue;
   const original = fs.readFileSync(filePath, 'utf8');
-  const updated = processHtml(original);
+  const updated = ensureSwRegistration(processHtml(original));
   if (updated !== original) {
     fs.writeFileSync(filePath, updated);
     console.log(`[cache-bust] updated ${file}`);
@@ -79,8 +166,11 @@ for (const file of HTML_FILES) {
 }
 
 const jsDir = path.join(ROOT, 'assets', 'js');
+const jsFiles = fs.existsSync(jsDir) ? walkJsFiles(jsDir) : [];
+generateServiceWorker(jsFiles);
+
 if (fs.existsSync(jsDir)) {
-  for (const filePath of walkJsFiles(jsDir)) {
+  for (const filePath of jsFiles) {
     const original = fs.readFileSync(filePath, 'utf8');
     const updated = processJs(original);
     if (updated !== original) {
