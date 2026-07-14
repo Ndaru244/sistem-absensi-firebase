@@ -1,5 +1,5 @@
-import { auth } from "../firebase/config.js?v=69b2699";
-import { SCHOOL_NAME } from "./constants.js?v=69b2699";
+import { auth } from "../firebase/config.js?v=e2de285";
+import { SCHOOL_NAME } from "./constants.js?v=e2de285";
 import { doc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 // Helper: Setup Dokumen PDF

@@ -1,10 +1,16 @@
-import { db } from "../firebase/config.js?v=69b2699";
+import { db } from "../firebase/config.js?v=e2de285";
 import { doc, getDocs, getDoc, collection, setDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { adminService } from "../firebase/admin-service.js?v=69b2699";
-import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=69b2699";
-import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=69b2699";
+import { adminService } from "../firebase/admin-service.js?v=e2de285";
+import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=e2de285";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=e2de285";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e2de285";
 
 const el = (id) => document.getElementById(id);
+
+// Registry SearchableSelect untuk admin
+const ssAdmin = {
+  filterKelas: null,  // filterKelasSiswa
+};
 const state = {
   classes: new Set(),
   studentsCache: {},
@@ -20,7 +26,7 @@ async function initAdmin() {
   setupEvents();
   updateBatchUI();
 
-  const currentFilter = el("filterKelasSiswa")?.value;
+  const currentFilter = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : "";
   if (currentFilter) loadStudentsByClass(currentFilter);
 }
 
@@ -31,7 +37,7 @@ async function loadClasses(forceRefresh = false) {
   const selectTargetPromote = el("selectTargetPromote"); // Dropdown di Modal Promote
 
   if (selectNewStudent) selectNewStudent.innerHTML = '<option>Memuat...</option>';
-  if (selectFilter) selectFilter.innerHTML = '<option>Memuat...</option>';
+  // filterKelasSiswa dihandle via SearchableSelect — tidak perlu innerHTML "Memuat"
 
   try {
     const data = await adminService.getClasses(forceRefresh);
@@ -59,14 +65,28 @@ async function loadClasses(forceRefresh = false) {
       draftKelasFilter.innerHTML = '<option value="">Semua Kelas (Antrian)</option>' + draftOpts;
     }
 
-    // 2. Filter Tabel
+    // 2. Filter Tabel — SearchableSelect
     if (selectFilter) {
-      const opts = data.map(c => {
-        state.classes.add(c.id);
-        const label = c.is_khusus ? `★ ${c.nama_kelas} (Mapel)` : (c.nama_kelas || c.id);
-        return `<option value="${c.id}">${label}</option>`;
-      }).join("");
-      selectFilter.innerHTML = '<option value="" disabled selected>-- Pilih Kelas Data --</option>' + opts;
+      data.forEach(c => state.classes.add(c.id));
+      const options = optionsFromClasses(data);
+
+      if (!ssAdmin.filterKelas) {
+        ssAdmin.filterKelas = new SearchableSelect(selectFilter, {
+          placeholder: '-- Pilih Kelas --',
+          allowEmpty: false,
+          onChange: (value) => {
+            if (el("filterNamaSiswa")) el("filterNamaSiswa").value = "";
+            if (value) loadStudentsByClass(value);
+            updateBatchUI();
+          },
+        });
+      }
+      const prevVal = ssAdmin.filterKelas.getValue();
+      ssAdmin.filterKelas.setOptions(options);
+      // Pertahankan nilai sebelumnya jika masih valid
+      if (prevVal && data.find(c => c.id === prevVal)) {
+        ssAdmin.filterKelas.setValue(prevVal);
+      }
     }
 
     // 3. Dropdown di Modal Promote (Hanya Kelas Reguler)
@@ -275,7 +295,7 @@ window.openManageMembers = async (kelasId) => {
       try {
         await adminService.addSiswaToSpecialClass(kId, selectedIds);
         delete state.studentsCache[kId];
-        if (el("filterKelasSiswa")?.value === kId) loadStudentsByClass(kId, true);
+        if (el("filterKelasSiswa")?.value === kId || ssAdmin.filterKelas?.getValue() === kId) loadStudentsByClass(kId, true);
         showToast("Siswa ditambahkan!", "success");
       } catch (e) {
         showToast(e.message, "error");
@@ -324,7 +344,7 @@ async function loadStudentsByClass(kelasId, forceRefresh = false) {
 }
 
 function getFilteredStudents() {
-  const kelasId = el("filterKelasSiswa")?.value;
+  const kelasId = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || "");
   if (!kelasId || !state.studentsCache[kelasId]) return [];
   const term = (el("filterNamaSiswa")?.value || "").trim().toLowerCase();
   const list = state.studentsCache[kelasId];
@@ -339,12 +359,12 @@ function renderTable(listSiswa = null) {
   const list = listSiswa ?? getFilteredStudents();
   const tbody = el("tbodySiswa");
   if (!list.length) {
-    const hasCache = el("filterKelasSiswa")?.value && state.studentsCache[el("filterKelasSiswa").value]?.length;
+    const hasCache = ssAdmin.filterKelas?.getValue() && state.studentsCache[ssAdmin.filterKelas.getValue()]?.length;
     const msg = hasCache ? "Tidak ada siswa cocok filter." : "Tidak ada siswa.";
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-400 p-8 italic">${msg}</td></tr>`;
     return;
   }
-  const kelasFilter = el("filterKelasSiswa")?.value || "";
+  const kelasFilter = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || "");
   tbody.innerHTML = list.map(s => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 border-b dark:border-gray-700">
             <td class="p-4 text-center"><input type="checkbox" class="student-checkbox w-4 h-4 rounded" data-id="${s.id}" ${state.selectedIds.has(s.id) ? "checked" : ""}></td>
@@ -361,7 +381,7 @@ async function handleBatchDelete() {
   const ids = Array.from(state.selectedIds);
   if (ids.length === 0) return;
 
-  const currentClass = el("filterKelasSiswa").value;
+  const currentClass = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || "");
   const isKhusus = isFilterKelasKhusus();
   const msg = isKhusus ? "Keluarkan siswa terpilih dari kelas mapel ini?" : `Hapus PERMANEN ${ids.length} siswa terpilih?`;
 
@@ -420,7 +440,7 @@ async function executePromote() {
     showToast(`Berhasil memindahkan ${ids.length} siswa!`, "success");
     state.selectedIds.clear();
     closePromoteModal();
-    loadStudentsByClass(el("filterKelasSiswa").value, true);
+    loadStudentsByClass(ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || ""), true);
   } catch (e) {
     showToast("Gagal: " + e.message, "error");
   } finally {
@@ -431,20 +451,19 @@ async function executePromote() {
 // --- EVENTS ---
 function setupEvents() {
   el("btnSaveKelas")?.addEventListener("click", handleCreateClass);
-  el("filterKelasSiswa")?.addEventListener("change", (e) => {
-    if (el("filterNamaSiswa")) el("filterNamaSiswa").value = "";
-    loadStudentsByClass(e.target.value);
-    updateBatchUI();
-  });
+  // filterKelasSiswa onChange ditangani di SearchableSelect (loadClasses)
   el("filterNamaSiswa")?.addEventListener("input", () => {
-    const kelasId = el("filterKelasSiswa")?.value;
+    const kelasId = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : "";
     if (kelasId && state.studentsCache[kelasId]) renderTable();
   });
-  el("btnRefreshStudents")?.addEventListener("click", () => loadStudentsByClass(el("filterKelasSiswa").value, true));
+  el("btnRefreshStudents")?.addEventListener("click", () => {
+    const kelasId = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : "";
+    if (kelasId) loadStudentsByClass(kelasId, true);
+  });
 
   // Batch Buttons
   el("btnTambahSiswaMapel")?.addEventListener("click", () => {
-    const kelasId = el("filterKelasSiswa")?.value;
+    const kelasId = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : "";
     if (kelasId && isFilterKelasKhusus()) openManageMembers(kelasId);
   });
   el("btnDeleteSelected")?.addEventListener("click", handleBatchDelete);
@@ -499,15 +518,17 @@ function setupEvents() {
 
 // Helpers
 function isFilterKelasKhusus() {
-  const sel = el("filterKelasSiswa");
-  if (!sel?.selectedOptions?.length) return false;
-  return sel.selectedOptions[0].text.includes("(Mapel)");
+  const val = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || "");
+  if (!val) return false;
+  // Cek berdasarkan data kelas di state — is_khusus lebih reliable dari label teks
+  const found = ssAdmin.filterKelas?._options?.find(o => o.value === val);
+  return found ? found.group === "Kelas Khusus" : false;
 }
 
 function updateBatchUI() {
   const cnt = state.selectedIds.size;
   const isKhusus = isFilterKelasKhusus();
-  const kelasId = el("filterKelasSiswa")?.value;
+  const kelasId = ssAdmin.filterKelas ? ssAdmin.filterKelas.getValue() : (el("filterKelasSiswa")?.value || "");
   el("countSelected").innerText = cnt;
   if (el("btnDeleteSelected")) el("btnDeleteSelected").disabled = cnt === 0;
   if (el("btnPromoteClass")) {

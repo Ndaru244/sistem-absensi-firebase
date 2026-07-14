@@ -1,16 +1,24 @@
-import { auth, db } from "../firebase/config.js?v=69b2699";
-import { attendanceService } from "../firebase/attendance-service.js?v=69b2699";
-import { adminService } from "../firebase/admin-service.js?v=69b2699";
-import { authService } from "../firebase/auth-service.js?v=69b2699";
+import { auth, db } from "../firebase/config.js?v=e2de285";
+import { attendanceService } from "../firebase/attendance-service.js?v=e2de285";
+import { adminService } from "../firebase/admin-service.js?v=e2de285";
+import { authService } from "../firebase/auth-service.js?v=e2de285";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=69b2699";
-import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=69b2699";
-import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=69b2699";
-import { onTabSync } from "../utils/tab-sync.js?v=69b2699";
+import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=e2de285";
+import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=e2de285";
+import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=e2de285";
+import { onTabSync } from "../utils/tab-sync.js?v=e2de285";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e2de285";
+
+// Registry SearchableSelect instances — diakses lintas fungsi
+const ss = {
+  kelas: null,       // kelasPicker
+  chartKelas: null,  // chartKelasPicker
+  monthKelas: null,  // monthKelasPicker
+};
 
 // === DASHBOARD LOGIC ===
 let attendanceChartInstance = null;
@@ -117,21 +125,46 @@ function tryRefreshDashboard() {
 }
 
 async function populateClassPickers() {
-  const picker = document.getElementById("kelasPicker");
-  const chartKelas = document.getElementById("chartKelasPicker");
-  const monthKelas = document.getElementById("monthKelasPicker");
-  if (!picker || picker.dataset.loaded === "1") return;
+  const pickerEl    = document.getElementById("kelasPicker");
+  const chartKelasEl = document.getElementById("chartKelasPicker");
+  const monthKelasEl = document.getElementById("monthKelasPicker");
+  if (!pickerEl || pickerEl.dataset.loaded === "1") return;
 
   try {
-    const classes = await adminService.getClasses();
-    classes
-      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-      .forEach((c) => {
-        picker.add(new Option(c.id, c.id));
-        if (chartKelas) chartKelas.add(new Option(c.id, c.id));
-        if (monthKelas) monthKelas.add(new Option(c.id, c.id));
+    const classes = await adminService.getClasses(true);
+    classes.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    const options = optionsFromClasses(classes);
+
+    // kelasPicker — untuk input absensi harian
+    if (!ss.kelas) {
+      ss.kelas = new SearchableSelect(pickerEl, {
+        placeholder: '-- Pilih Kelas --',
+        onChange: () => {},
       });
-    picker.dataset.loaded = "1";
+    }
+    ss.kelas.setOptions(options);
+
+    // chartKelasPicker — untuk filter grafik (boleh kosong = semua kelas)
+    if (chartKelasEl && !ss.chartKelas) {
+      ss.chartKelas = new SearchableSelect(chartKelasEl, {
+        placeholder: 'Semua Kelas',
+        allowEmpty: true,
+        emptyLabel: 'Semua Kelas',
+        onChange: () => window.loadDashboardChart(),
+      });
+    }
+    if (ss.chartKelas) ss.chartKelas.setOptions(options);
+
+    // monthKelasPicker — untuk rekap bulanan (dihandle ulang di openMonthlyModal)
+    if (monthKelasEl && !ss.monthKelas) {
+      ss.monthKelas = new SearchableSelect(monthKelasEl, {
+        placeholder: '-- Pilih Kelas --',
+        onChange: () => {},
+      });
+    }
+    if (ss.monthKelas) ss.monthKelas.setOptions(options);
+
+    pickerEl.dataset.loaded = "1";
   } catch (e) {
     console.error("Gagal memuat daftar kelas:", e);
   }
@@ -173,13 +206,11 @@ window.loadDashboardStatus = async (dateStr) => {
 };
 
 window.loadDashboardChart = async () => {
-  const kelasInp = document.getElementById("chartKelasPicker");
   const range = getChartMonthRange();
   if (!range) return;
 
   const { startVal, endVal } = range;
-
-  const selectedKelas = kelasInp && kelasInp.value ? kelasInp.value : null;
+  const selectedKelas = ss.chartKelas ? ss.chartKelas.getValue() : null;
 
   const canvas = document.getElementById("attendanceChart");
   if (!canvas) return; // Safeguard
@@ -321,7 +352,7 @@ function restoreDraftForUser(uid) {
 
     if (datePicker) datePicker.value = state.localData.tanggal;
     if (statusDatePicker) statusDatePicker.value = state.localData.tanggal;
-    if (picker) picker.value = state.localData.kelas;
+    if (ss.kelas) ss.kelas.setValue(state.localData.kelas);
     state.currentDocId = `${state.localData.tanggal}_${state.localData.kelas}`;
 
     document.getElementById("tabelAbsensi")?.classList.remove("hidden");
@@ -404,7 +435,7 @@ window.exportToPDF = () => {
     kepalaSekolah: state.kepalaSekolah,
   };
 
-  const kelasId = document.getElementById("kelasPicker")?.value;
+  const kelasId = ss.kelas ? ss.kelas.getValue() : (document.getElementById("kelasPicker")?.value ?? "");
   exportToPDF(payload, kelasId);
 };
 
@@ -435,10 +466,7 @@ function bootstrapIndexPage() {
   initChartMonthYearPickers();
   initReportMonthYearPickers();
 
-  const chartKelasInp = document.getElementById("chartKelasPicker");
-  if (chartKelasInp) {
-    chartKelasInp.addEventListener('change', window.loadDashboardChart);
-  }
+  // chartKelasPicker onChange sudah ditangani di SearchableSelect constructor (populateClassPickers)
 
   dashboardInitialized = true;
 
@@ -520,10 +548,9 @@ function initTabSync() {
 // --- LOGIC UTAMA ---
 window.loadRekapData = async (forceRefresh = false) => {
   const datePicker = document.getElementById("datePicker");
-  const kelasPicker = document.getElementById("kelasPicker");
-  if (!datePicker || !kelasPicker) return;
+  if (!datePicker) return;
   const tgl = datePicker.value;
-  const kls = kelasPicker.value;
+  const kls = ss.kelas ? ss.kelas.getValue() : (document.getElementById("kelasPicker")?.value ?? "");
   if (!tgl || !kls) return showToast("Pilih Tanggal & Kelas!", "warning");
 
   // Cek apakah hari libur (Sabtu/Minggu)
@@ -834,25 +861,39 @@ function handleLockState() {
 // --- MONTHLY REPORT ---
 window.openMonthlyModal = () => {
   const modal = document.getElementById("modalMonthly");
-  const monthKls = document.getElementById("monthKelasPicker");
-  const globalKls = document.getElementById("kelasPicker");
+  const monthKelasEl = document.getElementById("monthKelasPicker");
   const reportYear = document.getElementById("reportYearPicker");
-  const reportMonth = document.getElementById("reportMonthPicker");
   const chartYear = document.getElementById("chartYearPicker");
   const chartMonth = document.getElementById("chartMonthPicker");
-
-  const chartKls = document.getElementById("chartKelasPicker");
+  const reportMonth = document.getElementById("reportMonthPicker");
 
   if (!modal) return;
 
   if (!reportYear?.dataset.initialized) initReportMonthYearPickers();
 
-  if (globalKls && monthKls && globalKls.options.length > 1) {
-    const selected = chartKls?.value || globalKls.value;
-    monthKls.innerHTML = '<option value="">-- Pilih Kelas --</option>';
-    Array.from(globalKls.options).forEach((opt) => {
-      if (opt.value) monthKls.add(new Option(opt.text, opt.value, false, opt.value === selected));
-    });
+  // Inisialisasi atau update SearchableSelect untuk monthKelasPicker
+  if (monthKelasEl) {
+    const currentVal = ss.kelas?.getValue() || "";
+
+    if (!ss.monthKelas) {
+      ss.monthKelas = new SearchableSelect(monthKelasEl, {
+        placeholder: '-- Pilih Kelas --',
+        onChange: () => {},
+      });
+    }
+
+    if (ss.kelas && document.getElementById("kelasPicker")?.dataset.loaded === "1") {
+      // Salin options dari ss.kelas (sudah ada, reuse)
+      ss.monthKelas.setOptions(ss.kelas._options);
+      if (currentVal) ss.monthKelas.setValue(currentVal);
+    } else {
+      // Fetch langsung jika ss.kelas belum siap
+      adminService.getClasses(true).then(classes => {
+        classes.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+        ss.monthKelas.setOptions(optionsFromClasses(classes));
+        if (window.lucide) window.lucide.createIcons();
+      }).catch(e => console.error("Gagal memuat kelas rekap bulanan:", e));
+    }
   }
 
   if (chartYear?.value && chartMonth?.value && reportYear && reportMonth) {
@@ -870,13 +911,12 @@ window.closeMonthlyModal = () => {
 };
 
 window.loadMonthlyReport = async () => {
-  const monthKls = document.getElementById("monthKelasPicker");
   const tbody = document.getElementById("tbodyBulanan");
   const picked = getMonthYearFromPickers("reportYearPicker", "reportMonthPicker");
 
-  if (!monthKls || !tbody) return;
+  if (!tbody) return;
 
-  const kls = monthKls.value;
+  const kls = ss.monthKelas ? ss.monthKelas.getValue() : (document.getElementById("monthKelasPicker")?.value ?? "");
   const month = picked?.monthStr;
 
   if (!kls || !month) return showToast("Pilih kelas, bulan, dan tahun!", "warning");
@@ -1004,11 +1044,10 @@ window.loadMonthlyReport = async () => {
 };
 
 window.printMonthlyData = () => {
-  const klsPicker = document.getElementById("monthKelasPicker");
   const picked = getMonthYearFromPickers("reportYearPicker", "reportMonthPicker");
-  if (!klsPicker || !picked) return showToast("Pilih periode dan kelas!", "warning");
+  if (!picked) return showToast("Pilih periode dan kelas!", "warning");
 
-  const kls = klsPicker.value;
+  const kls = ss.monthKelas ? ss.monthKelas.getValue() : (document.getElementById("monthKelasPicker")?.value ?? "");
   if (!kls) return showToast("Pilih kelas!", "warning");
 
   if (
