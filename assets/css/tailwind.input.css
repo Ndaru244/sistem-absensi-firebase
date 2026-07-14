@@ -300,6 +300,88 @@
   }
 }
 
+/* ─── Searchable Select ──────────────────────────────────────────────────── */
+@layer components {
+  .ss-wrapper {
+    @apply relative w-full;
+  }
+
+  .ss-trigger {
+    @apply w-full flex items-center justify-between gap-2 text-left cursor-pointer;
+    /* override default button reset */
+    appearance: none;
+    background-image: none;
+  }
+
+  .ss-trigger-text {
+    @apply flex-1 truncate;
+  }
+
+  .ss-trigger-text.ss-placeholder {
+    @apply text-slate-400;
+  }
+
+  .ss-chevron {
+    @apply text-slate-400 flex-shrink-0 transition-transform duration-150;
+  }
+
+  .ss-open .ss-chevron {
+    @apply rotate-180;
+  }
+
+  /* Panel — posisi diatur via JS (portal ke body) */
+  .ss-panel {
+    @apply z-[9999] min-w-[200px] bg-white dark:bg-slate-800
+           border border-slate-200 dark:border-slate-700
+           rounded-lg shadow-xl overflow-hidden;
+    position: fixed; /* override via JS: top/bottom/left/width */
+  }
+
+  /* Search */
+  .ss-search-wrap {
+    @apply relative border-b border-slate-100 dark:border-slate-700;
+  }
+
+  .ss-search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none;
+  }
+
+  .ss-search {
+    @apply w-full pl-8 pr-3 py-2 text-sm bg-transparent text-slate-900 dark:text-white
+           placeholder-slate-400 outline-none;
+  }
+
+  /* List */
+  .ss-list {
+    @apply max-h-52 overflow-y-auto py-1 list-none m-0 p-0;
+  }
+
+  .ss-group-label {
+    @apply px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest
+           text-slate-400 dark:text-slate-500 select-none;
+  }
+
+  .ss-option {
+    @apply px-3 py-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer
+           hover:bg-primary-50 dark:hover:bg-primary-950/40
+           hover:text-primary-700 dark:hover:text-primary-300
+           transition-colors duration-75;
+  }
+
+  .ss-option-empty {
+    @apply italic text-slate-400 dark:text-slate-500;
+  }
+
+  .ss-option.ss-selected {
+    @apply bg-primary-50 dark:bg-primary-950/40
+           text-primary-700 dark:text-primary-300 font-medium;
+  }
+
+  .ss-empty {
+    @apply px-3 py-3 text-sm text-center text-slate-400 dark:text-slate-500 select-none;
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.2s ease-out both;
