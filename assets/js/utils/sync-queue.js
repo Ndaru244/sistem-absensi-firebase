@@ -4,7 +4,7 @@ import {
   updateDoc,
   Timestamp,
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
-import { broadcast } from './tab-sync.js?v=e2de285';
+import { broadcast } from './tab-sync.js?v=6215fc9';
 
 const QUEUE_KEY = 'app_sync_queue';
 const MAX_RETRIES = 3;

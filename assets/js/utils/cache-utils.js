@@ -1,7 +1,11 @@
-import { broadcast } from './tab-sync.js?v=e2de285';
+import { broadcast } from './tab-sync.js?v=6215fc9';
 
 const APP_PREFIXES = ['login_session_', 'profile_', 'users_', 'attendance_', 'app_cache_'];
 const APP_KEYS = ['settings_kepala_sekolah'];
+
+// Firebase cache prefixes
+const FIREBASE_CACHE_PREFIX = 'firebase_cache_';
+const FIREBASE_CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 
 export function getDraftKey(uid) {
   return uid ? `absensi_draft_${uid}` : null;
@@ -83,4 +87,59 @@ export function setKepalaSekolahCache(data) {
 
 export function clearKepalaSekolahCache() {
   localStorage.removeItem(KEPSEK_KEY);
+}
+
+// Firebase cache functions
+export function getFirebaseCache(collection, docId = null) {
+  try {
+    const key = docId 
+      ? `${FIREBASE_CACHE_PREFIX}${collection}_${docId}`
+      : `${FIREBASE_CACHE_PREFIX}${collection}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const item = JSON.parse(raw);
+    if (Date.now() - item.timestamp > FIREBASE_CACHE_TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return item.data;
+  } catch {
+    return null;
+  }
+}
+
+export function setFirebaseCache(collection, data, docId = null) {
+  try {
+    const key = docId 
+      ? `${FIREBASE_CACHE_PREFIX}${collection}_${docId}`
+      : `${FIREBASE_CACHE_PREFIX}${collection}`;
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('Firebase cache error:', e);
+  }
+}
+
+export function clearFirebaseCache(collection = null, docId = null) {
+  try {
+    if (collection && docId) {
+      const key = `${FIREBASE_CACHE_PREFIX}${collection}_${docId}`;
+      localStorage.removeItem(key);
+    } else if (collection) {
+      // Clear all cache for specific collection
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(`${FIREBASE_CACHE_PREFIX}${collection}_`) || key === `${FIREBASE_CACHE_PREFIX}${collection}`) {
+          localStorage.removeItem(key);
+        }
+      });
+    } else {
+      // Clear all firebase cache
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(FIREBASE_CACHE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('Clear firebase cache error:', e);
+  }
 }
