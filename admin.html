@@ -8,7 +8,7 @@
     <meta name="description" content="Manajemen data Master Kelas dan Siswa untuk operasional sekolah.">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=e2de285">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=6215fc9">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -45,179 +45,236 @@
 
     <div id="navbar-container"></div>
 
-    <main class="app-main space-y-6">
+    <main class="app-main space-y-8">
         <div class="page-header">
-            <h1 class="page-title">Master Data</h1>
-            <p class="page-subtitle">Kelola data sekolah, kelas, dan siswa.</p>
+            <h1 class="page-title">Panel Admin</h1>
+            <p class="page-subtitle">Kelola data master sekolah, kelas, dan siswa.</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Identitas Sekolah -->
-            <div class="lg:col-span-1 space-y-4">
+        <!-- Section: Pengaturan Sekolah -->
+        <section>
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-1 h-6 bg-primary-600 rounded-full"></div>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Pengaturan Sekolah</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Identitas Sekolah -->
                 <div class="card">
                     <div class="card-body">
-                        <h2 class="section-title mb-4">
-                            <i data-lucide="building-2" class="w-4 h-4 text-primary-600"></i>
-                            Identitas Sekolah
-                        </h2>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-950/30 flex items-center justify-center">
+                                <i data-lucide="building-2" class="w-5 h-5 text-primary-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-slate-900 dark:text-white">Identitas Sekolah</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Data kepala sekolah untuk dokumen</p>
+                            </div>
+                        </div>
                         <button onclick="openSchoolSettings()" class="btn-secondary w-full">
                             <i data-lucide="settings" class="w-4 h-4"></i>
-                            Edit Data Kepala Sekolah
+                            Edit Data
                         </button>
                     </div>
                 </div>
-                <div class="alert-info">
-                    <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
-                    <p>Data ini digunakan otomatis untuk kop surat & tanda tangan PDF.</p>
-                </div>
-            </div>
 
-            <!-- Master Kelas -->
-            <div class="lg:col-span-2">
+                <!-- Akses Kelas Guru -->
                 <div class="card">
-                    <div class="card-header">
-                        <h2 class="section-title">
-                            <i data-lucide="layers" class="w-4 h-4 text-primary-600"></i> Master Kelas
-                        </h2>
-                        <button onclick="window.openClassManager()" class="btn-ghost btn-sm">
-                            <i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Kelola & Anggota
-                        </button>
-                    </div>
-                    <div class="card-body space-y-4">
-                        <div class="input-icon">
-                            <i data-lucide="type"></i>
-                            <input type="text" id="inputNamaKelas" placeholder="Nama Kelas (Contoh: X RPL 1)" class="input">
-                        </div>
-
-                        <label class="flex items-start gap-3 p-3 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer">
-                            <input type="checkbox" id="isKhususCheck" class="w-4 h-4 mt-0.5 accent-primary-600 cursor-pointer">
-                            <div>
-                                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Kelas Khusus / Mapel</span>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Centang jika kelas gabungan (Agama/Olahraga)</p>
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+                                <i data-lucide="key" class="w-5 h-5 text-amber-600"></i>
                             </div>
-                        </label>
-
-                        <button id="btnSaveKelas" class="btn-primary w-full">
-                            <i data-lucide="plus" class="w-4 h-4"></i> Simpan Kelas
+                            <div>
+                                <h3 class="font-semibold text-slate-900 dark:text-white">Akses Kelas Guru</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Atur akses kelas per guru</p>
+                            </div>
+                        </div>
+                        <button onclick="openGuruKelasAccess()" class="btn-primary w-full">
+                            <i data-lucide="users" class="w-4 h-4"></i>
+                            Kelola Akses
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Input Siswa -->
-        <div class="card">
-            <div class="card-header">
-                <h2 class="section-title">
-                    <i data-lucide="graduation-cap" class="w-4 h-4 text-primary-600"></i> Input Siswa Baru
-                </h2>
-                <span id="countDraft" class="badge-primary">Antrian: 0</span>
+        <!-- Section: Manajemen Kelas -->
+        <section>
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-1 h-6 bg-primary-600 rounded-full"></div>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Manajemen Kelas</h2>
             </div>
-            <div class="card-body space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                    <div class="md:col-span-5 input-icon">
-                        <i data-lucide="user"></i>
-                        <input type="text" id="inputNamaSiswa" placeholder="Nama Lengkap" class="input">
-                    </div>
-                    <div class="md:col-span-3 input-icon">
-                        <i data-lucide="credit-card"></i>
-                        <input type="text" id="inputNISSiswa" placeholder="NIS" class="input">
-                    </div>
-                    <div class="md:col-span-4">
-                        <select id="selectKelasSiswa" class="input">
-                            <option value="">Loading Kelas...</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex gap-2">
-                    <button id="btnAddToDraft" class="btn-primary flex-1">
-                        <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i> Masuk Antrian
-                    </button>
-                    <button id="btnUploadBatch" style="display:none;" class="btn-success flex-1">
-                        <i data-lucide="upload" class="w-4 h-4"></i> Upload Database
-                    </button>
-                </div>
-
-                <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div class="input-icon">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="filterDraftNama" placeholder="Filter antrian..." class="input">
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
+                            <i data-lucide="layers" class="w-5 h-5 text-emerald-600"></i>
                         </div>
-                        <select id="filterDraftKelas" class="input">
-                            <option value="">Semua Kelas (Antrian)</option>
+                        <div>
+                            <h3 class="font-semibold text-slate-900 dark:text-white">Master Kelas</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Tambah dan kelola kelas</p>
+                        </div>
+                    </div>
+                    <button onclick="window.openClassManager()" class="btn-ghost btn-sm">
+                        <i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Kelola & Anggota
+                    </button>
+                </div>
+                <div class="card-body space-y-4">
+                    <div class="input-icon">
+                        <i data-lucide="type"></i>
+                        <input type="text" id="inputNamaKelas" placeholder="Nama Kelas (Contoh: X RPL 1)" class="input">
+                    </div>
+
+                    <label class="flex items-start gap-3 p-3 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                        <input type="checkbox" id="isKhususCheck" class="w-4 h-4 mt-0.5 accent-primary-600 cursor-pointer">
+                        <div>
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Kelas Khusus / Mapel</span>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Centang jika kelas gabungan (Agama/Olahraga)</p>
+                        </div>
+                    </label>
+
+                    <button id="btnSaveKelas" class="btn-primary w-full">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Simpan Kelas
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Manajemen Siswa -->
+        <section>
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-1 h-6 bg-primary-600 rounded-full"></div>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Manajemen Siswa</h2>
+            </div>
+            
+            <!-- Input Siswa Baru -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center">
+                            <i data-lucide="graduation-cap" class="w-5 h-5 text-sky-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-slate-900 dark:text-white">Input Siswa Baru</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Tambah siswa ke database</p>
+                        </div>
+                    </div>
+                    <span id="countDraft" class="badge-primary">Antrian: 0</span>
+                </div>
+                <div class="card-body space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                        <div class="md:col-span-5 input-icon">
+                            <i data-lucide="user"></i>
+                            <input type="text" id="inputNamaSiswa" placeholder="Nama Lengkap" class="input">
+                        </div>
+                        <div class="md:col-span-3 input-icon">
+                            <i data-lucide="credit-card"></i>
+                            <input type="text" id="inputNISSiswa" placeholder="NIS" class="input">
+                        </div>
+                        <div class="md:col-span-4">
+                            <select id="selectKelasSiswa" class="input">
+                                <option value="">Loading Kelas...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="btnAddToDraft" class="btn-primary flex-1">
+                            <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i> Masuk Antrian
+                        </button>
+                        <button id="btnUploadBatch" style="display:none;" class="btn-success flex-1">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Upload Database
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="input-icon">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="filterDraftNama" placeholder="Filter antrian..." class="input">
+                            </div>
+                            <select id="filterDraftKelas" class="input">
+                                <option value="">Semua Kelas (Antrian)</option>
+                            </select>
+                        </div>
+                        <div class="table-wrap rounded-md border border-slate-200 dark:border-slate-800">
+                            <table class="data-table">
+                                <tbody id="tbodyDraft"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Siswa Terdaftar -->
+            <div class="card overflow-hidden">
+                <div class="card-header">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
+                            <i data-lucide="users" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-slate-900 dark:text-white">Data Siswa Terdaftar</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Kelola data siswa yang sudah ada</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <div class="input-icon flex-1 sm:w-44">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="filterNamaSiswa" placeholder="Cari nama..." class="input">
+                        </div>
+                        <select id="filterKelasSiswa" class="input flex-1 sm:w-48">
+                            <option value="" disabled selected>-- Pilih Kelas --</option>
                         </select>
+                        <button id="btnRefreshStudents" class="btn-ghost btn-icon" title="Refresh">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    <div class="table-wrap rounded-md border border-slate-200 dark:border-slate-800">
-                        <table class="data-table">
-                            <tbody id="tbodyDraft"></tbody>
-                        </table>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-8 text-center"><input type="checkbox" id="checkAll" class="rounded cursor-pointer w-4 h-4"></th>
+                                <th>Nama Siswa</th>
+                                <th>NIS</th>
+                                <th>Kelas</th>
+                                <th class="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodySiswa">
+                            <tr>
+                                <td colspan="5" class="p-12 text-center text-slate-400">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i data-lucide="mouse-pointer-click" class="w-8 h-8 opacity-40"></i>
+                                        <span class="text-sm">Pilih filter kelas untuk menampilkan data.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer flex flex-wrap justify-between items-center gap-3">
+                    <span class="text-sm text-slate-500">
+                        Terpilih: <span id="countSelected" class="font-semibold text-primary-600">0</span>
+                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnTambahSiswaMapel" style="display:none;" class="btn-primary btn-sm">
+                            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Tambah Siswa
+                        </button>
+                        <button id="btnPromoteClass" disabled class="btn-secondary btn-sm">
+                            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Promote
+                        </button>
+                        <button id="btnDeleteSelected" disabled class="btn-danger btn-sm">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span id="btnDeleteSelectedLabel">Hapus</span>
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Data Siswa -->
-        <div class="card overflow-hidden">
-            <div class="card-header">
-                <h2 class="section-title">Data Siswa Terdaftar</h2>
-                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <div class="input-icon flex-1 sm:w-44">
-                        <i data-lucide="search"></i>
-                        <input type="text" id="filterNamaSiswa" placeholder="Cari nama..." class="input">
-                    </div>
-                    <select id="filterKelasSiswa" class="input flex-1 sm:w-48">
-                        <option value="" disabled selected>-- Pilih Kelas --</option>
-                    </select>
-                    <button id="btnRefreshStudents" class="btn-ghost btn-icon" title="Refresh">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="w-8 text-center"><input type="checkbox" id="checkAll" class="rounded cursor-pointer w-4 h-4"></th>
-                            <th>Nama Siswa</th>
-                            <th>NIS</th>
-                            <th>Kelas</th>
-                            <th class="text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodySiswa">
-                        <tr>
-                            <td colspan="5" class="p-12 text-center text-slate-400">
-                                <div class="flex flex-col items-center gap-2">
-                                    <i data-lucide="mouse-pointer-click" class="w-8 h-8 opacity-40"></i>
-                                    <span class="text-sm">Pilih filter kelas untuk menampilkan data.</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card-footer flex flex-wrap justify-between items-center gap-3">
-                <span class="text-sm text-slate-500">
-                    Terpilih: <span id="countSelected" class="font-semibold text-primary-600">0</span>
-                </span>
-                <div class="flex flex-wrap gap-2">
-                    <button id="btnTambahSiswaMapel" style="display:none;" class="btn-primary btn-sm">
-                        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Tambah Siswa
-                    </button>
-                    <button id="btnPromoteClass" disabled class="btn-secondary btn-sm">
-                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Promote
-                    </button>
-                    <button id="btnDeleteSelected" disabled class="btn-danger btn-sm">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        <span id="btnDeleteSelectedLabel">Hapus</span>
-                    </button>
-                </div>
-            </div>
-        </div>
+        </section>
     </main>
 
     <!-- Modal Promote -->
@@ -252,10 +309,10 @@
     </div>
 
     <script type="module">
-        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=e2de285';
-        import './assets/js/pages/admin.js?v=e2de285';
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=e2de285';
-        import { initNavbarProfile } from './assets/js/components/navbar.js?v=e2de285';
+        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=6215fc9';
+        import './assets/js/pages/admin.js?v=6215fc9';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=6215fc9';
+        import { initNavbarProfile } from './assets/js/components/navbar.js?v=6215fc9';
 
         window.toggleTheme = toggleTheme;
         initNavbar('admin');

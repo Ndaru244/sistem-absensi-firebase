@@ -260,7 +260,7 @@
   }
 
   .modal-body {
-    @apply px-5 py-4;
+    @apply px-5 py-4 max-h-[70vh] overflow-y-auto;
   }
 
   .modal-footer {

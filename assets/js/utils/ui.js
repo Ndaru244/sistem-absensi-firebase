@@ -84,7 +84,7 @@ const _ensureModals = () => {
     }
 };
 
-const _open = (id, content, cb, title = '') => {
+const _open = (id, content, cb, title = '', sizeClass = null) => {
     _ensureModals();
     const el = document.getElementById(id);
 
@@ -92,6 +92,16 @@ const _open = (id, content, cb, title = '') => {
         document.getElementById('html-title').innerText = title || 'Form Edit';
         document.getElementById('html-body').innerHTML = content;
         htmlCallback = cb;
+        
+        // Apply custom size if provided
+        const panel = el.querySelector('.modal-panel');
+        if (sizeClass) {
+            panel.classList.remove('max-w-md');
+            panel.classList.add(sizeClass);
+        } else {
+            panel.classList.remove('max-w-md', 'max-w-sm', 'max-w-lg', 'max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl', 'max-w-full');
+            panel.classList.add('max-w-md');
+        }
     } else {
         const msgId = id === 'custom-modal' ? 'modal-msg' : 'prompt-msg';
         document.getElementById(msgId).innerText = content;
@@ -172,7 +182,7 @@ export function showConfirm(title, onConfirm, description = "") {
     };
 }
 
-export const showCustomModal = (title, htmlContent, onSave) => _open('custom-html', htmlContent, onSave, title);
+export const showCustomModal = (title, htmlContent, onSave, sizeClass = null) => _open('custom-html', htmlContent, onSave, title, sizeClass);
 
 export const showToast = (msg, type = 'info') => {
     const div = document.createElement('div');
@@ -183,7 +193,7 @@ export const showToast = (msg, type = 'info') => {
     setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 200); }, 3000);
 };
 
-import { SCHOOL_NAME } from './constants.js?v=e2de285';
+import { SCHOOL_NAME } from './constants.js?v=6215fc9';
 export function renderNavbar(activePage = 'index') {
     const nav = document.createElement('nav');
     nav.className = 'app-nav';
