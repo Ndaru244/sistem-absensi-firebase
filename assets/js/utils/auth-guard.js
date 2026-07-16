@@ -1,5 +1,5 @@
-import { auth } from '../firebase/config.js?v=6215fc9';
-import { authService } from '../firebase/auth-service.js?v=6215fc9';
+import { auth } from '../firebase/config.js?v=9e638c7';
+import { authService } from '../firebase/auth-service.js?v=9e638c7';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 let isInitialized = false;

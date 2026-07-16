@@ -3,6 +3,7 @@
 
 # Dependencies
 node_modules/
+graphify-out
 
 # Secrets & credentials
 /assets/js/firebase/config.js
