@@ -1,6 +1,6 @@
-import { db } from './config.js?v=7d3aff6';
+import { db } from './config.js?v=dd5a477';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { authService } from './auth-service.js?v=7d3aff6';
+import { authService } from './auth-service.js?v=dd5a477';
 
 // ===== PROFILE CACHE =====
 const ProfileCache = {

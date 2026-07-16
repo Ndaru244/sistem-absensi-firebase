@@ -1,5 +1,5 @@
-import { profileService } from '../firebase/profile-service.js?v=7d3aff6';
-import { authService } from '../firebase/auth-service.js?v=7d3aff6';
+import { profileService } from '../firebase/profile-service.js?v=dd5a477';
+import { authService } from '../firebase/auth-service.js?v=dd5a477';
 
 // ===== HELPER: ROLE UI CONFIG =====
 function getRoleMetadata(role) {
