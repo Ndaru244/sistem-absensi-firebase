@@ -1,10 +1,10 @@
-import { db, auth } from './config.js?v=7d3aff6';
+import { db, auth } from './config.js?v=dd5a477';
 import {
     collection, getDocs, doc, getDoc, setDoc, query, where, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { readDraft, removeDraft } from '../utils/cache-utils.js?v=7d3aff6';
-import { broadcast } from '../utils/tab-sync.js?v=7d3aff6';
-import { enqueue, isOnline, flushQueue } from '../utils/sync-queue.js?v=7d3aff6';
+import { readDraft, removeDraft } from '../utils/cache-utils.js?v=dd5a477';
+import { broadcast } from '../utils/tab-sync.js?v=dd5a477';
+import { enqueue, isOnline, flushQueue } from '../utils/sync-queue.js?v=dd5a477';
 
 const queryMemCache = new Map();
 const QUERY_CACHE_TTL = 1000 * 60 * 3;

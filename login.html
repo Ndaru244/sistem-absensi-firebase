@@ -10,7 +10,7 @@
     <meta property="og:title" content="Login - SDN Sunter Agung 12 PG">
     <meta property="og:description" content="Akses manajemen kehadiran siswa berbasis Cloud.">
     <meta property="og:image" content="assets/images/logo.png">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=7d3aff6">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=dd5a477">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -81,9 +81,9 @@
     </div>
 
     <script type="module">
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=7d3aff6';
-        import { authService } from './assets/js/firebase/auth-service.js?v=7d3aff6';
-        import { auth } from './assets/js/firebase/config.js?v=7d3aff6';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=dd5a477';
+        import { authService } from './assets/js/firebase/auth-service.js?v=dd5a477';
+        import { auth } from './assets/js/firebase/config.js?v=dd5a477';
 
         initAuthGuard({ preventLoginAccess: true });
         lucide.createIcons();

@@ -1,4 +1,4 @@
-import { auth, db } from "./config.js?v=7d3aff6";
+import { auth, db } from "./config.js?v=dd5a477";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -10,7 +10,7 @@ import {
   updateDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { clearAllAppCaches } from "../utils/cache-utils.js?v=7d3aff6";
+import { clearAllAppCaches } from "../utils/cache-utils.js?v=dd5a477";
 
 const provider = new GoogleAuthProvider();
 
