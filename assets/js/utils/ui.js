@@ -193,7 +193,7 @@ export const showToast = (msg, type = 'info') => {
     setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 200); }, 3000);
 };
 
-import { SCHOOL_NAME } from './constants.js?v=9e638c7';
+import { SCHOOL_NAME } from './constants.js?v=7d3aff6';
 export function renderNavbar(activePage = 'index') {
     const nav = document.createElement('nav');
     nav.className = 'app-nav';
