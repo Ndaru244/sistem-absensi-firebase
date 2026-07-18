@@ -1,7 +1,7 @@
-import { broadcast } from './tab-sync.js?v=dd5a477';
+import { broadcast } from './tab-sync.js?v=e9d50df';
 
 const APP_PREFIXES = ['login_session_', 'profile_', 'users_', 'attendance_', 'app_cache_'];
-const APP_KEYS = ['settings_kepala_sekolah'];
+const APP_KEYS = ['settings_kepala_sekolah', 'app_sync_queue', 'app_sync_dead_letter'];
 
 // Firebase cache prefixes
 const FIREBASE_CACHE_PREFIX = 'firebase_cache_';

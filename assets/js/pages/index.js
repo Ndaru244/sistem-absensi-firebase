@@ -1,17 +1,17 @@
-import { auth, db } from "../firebase/config.js?v=dd5a477";
-import { attendanceService } from "../firebase/attendance-service.js?v=dd5a477";
-import { adminService } from "../firebase/admin-service.js?v=dd5a477";
-import { authService } from "../firebase/auth-service.js?v=dd5a477";
+import { auth, db } from "../firebase/config.js?v=e9d50df";
+import { attendanceService } from "../firebase/attendance-service.js?v=e9d50df";
+import { adminService } from "../firebase/admin-service.js?v=e9d50df";
+import { authService } from "../firebase/auth-service.js?v=e9d50df";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=dd5a477";
-import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=dd5a477";
-import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=dd5a477";
-import { onTabSync } from "../utils/tab-sync.js?v=dd5a477";
-import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=dd5a477";
+import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=e9d50df";
+import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=e9d50df";
+import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=e9d50df";
+import { onTabSync } from "../utils/tab-sync.js?v=e9d50df";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e9d50df";
 
 // Registry SearchableSelect instances — diakses lintas fungsi
 const ss = {
@@ -611,13 +611,13 @@ function renderTable() {
       const s = siswa[id];
       const ketBadge =
         s.keterangan && s.keterangan !== "-"
-          ? `<div class="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50 w-fit">
-                    <i data-lucide="message-square" class="w-3 h-3"></i> ${s.keterangan}
+          ? `<div class="siswa-ket mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50 w-fit">
+                    <i data-lucide="message-square" class="w-3 h-3"></i> <span class="siswa-ket-text"></span>
                    </div>`
-          : "";
+          : `<div class="siswa-ket hidden"></div>`;
 
       return `
-            <tr class="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-all duration-200">
+            <tr data-siswa-id="${id}" class="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-all duration-200">
                 <td class="p-3 md:p-5">
                     <div class="flex flex-col">
                         <span class="text-[10px] font-black text-indigo-500 dark:text-indigo-400 mb-0.5 tracking-tighter">${s.nis || "-"}</span>
@@ -630,16 +630,16 @@ function renderTable() {
                         ${["Hadir", "Sakit", "Izin", "Alpa"]
           .map(
             (st) => `
-                                <button onclick="updateStatus('${id}', '${st}')" 
+                                <button type="button" data-status-btn="${st}" onclick="updateStatus('${id}', '${st}')" 
                                     class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border shadow-sm transition-all transform active:scale-90 flex items-center gap-1 sm:gap-1.5 
                                     ${s.status === st
                 ? _getModernColor(st)
                 : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               }">
-                                    ${st === "Hadir" && s.status === "Hadir"
+                                    <span class="status-check">${st === "Hadir" && s.status === "Hadir"
                 ? '<i data-lucide="check" class="w-3 h-3"></i>'
                 : ""
-              } 
+              }</span>
                                     ${st}
                                 </button>
                             `
@@ -651,7 +651,64 @@ function renderTable() {
     })
     .join("");
 
+  tbody.querySelectorAll("tr[data-siswa-id]").forEach((row) => {
+    const sid = row.getAttribute("data-siswa-id");
+    const ketText = row.querySelector(".siswa-ket-text");
+    if (ketText && siswa[sid]?.keterangan && siswa[sid].keterangan !== "-") {
+      ketText.textContent = siswa[sid].keterangan;
+    }
+  });
+
   if (window.lucide) window.lucide.createIcons({ root: tbody });
+}
+
+function _inactiveStatusClass() {
+  return "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300";
+}
+
+function patchSiswaRow(id) {
+  const s = state.localData?.siswa?.[id];
+  if (!s) return;
+
+  const row = document.querySelector(`#tbodySiswa tr[data-siswa-id="${CSS.escape(id)}"]`);
+  if (!row) {
+    renderTable();
+    return;
+  }
+
+  const baseBtn =
+    "px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border shadow-sm transition-all transform active:scale-90 flex items-center gap-1 sm:gap-1.5";
+
+  row.querySelectorAll("[data-status-btn]").forEach((btn) => {
+    const st = btn.getAttribute("data-status-btn");
+    const active = s.status === st;
+    btn.className = `${baseBtn} ${active ? _getModernColor(st) : _inactiveStatusClass()}`;
+    const check = btn.querySelector(".status-check");
+    if (check) {
+      check.innerHTML = st === "Hadir" && active ? '<i data-lucide="check" class="w-3 h-3"></i>' : "";
+    }
+  });
+
+  let ketEl = row.querySelector(".siswa-ket");
+  const nameCell = row.querySelector("td .flex.flex-col");
+  if (s.keterangan && s.keterangan !== "-") {
+    if (!ketEl || ketEl.classList.contains("hidden")) {
+      if (ketEl) ketEl.remove();
+      const badge = document.createElement("div");
+      badge.className =
+        "siswa-ket mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border border-amber-100 dark:border-amber-800/50 w-fit";
+      badge.innerHTML = '<i data-lucide="message-square" class="w-3 h-3"></i> <span class="siswa-ket-text"></span>';
+      nameCell?.appendChild(badge);
+      ketEl = badge;
+    }
+    const text = ketEl.querySelector(".siswa-ket-text");
+    if (text) text.textContent = s.keterangan;
+    ketEl.classList.remove("hidden");
+  } else if (ketEl) {
+    ketEl.remove();
+  }
+
+  if (window.lucide) window.lucide.createIcons({ root: row });
 }
 
 function _getModernColor(st) {
@@ -675,7 +732,7 @@ window.updateStatus = (id, newStatus) => {
     s.status = newStatus;
     s.keterangan = ket;
     setDirty(true);
-    renderTable();
+    patchSiswaRow(id);
     if (auth.currentUser?.uid) writeDraft(auth.currentUser.uid, state.localData);
   };
 
@@ -938,10 +995,9 @@ window.loadMonthlyReport = async () => {
   if (btnPrint) btnPrint.style.display = "none";
 
   try {
-    // FORCE REFRESH: Pass forceRefresh = true untuk bypass cache
     const [masterRaw, reports] = await Promise.all([
-      attendanceService.getMasterSiswa(kls, true),
-      attendanceService.getMonthlyReport(kls, month, true),
+      attendanceService.getMasterSiswa(kls, false),
+      attendanceService.getMonthlyReport(kls, month, false),
     ]);
 
     const master = mergeMasterWithReports(masterRaw, reports);
@@ -950,7 +1006,6 @@ window.loadMonthlyReport = async () => {
     const [year, monthNum] = month.split("-").map(Number);
     const days = new Date(year, monthNum, 0).getDate();
 
-    // Header
     const headerRow = document.getElementById("headerRowBulanan");
     if (headerRow) {
       let headHtml =
@@ -967,7 +1022,6 @@ window.loadMonthlyReport = async () => {
       headerRow.innerHTML = headHtml;
     }
 
-    // Mapping Data
     let map = {};
     Object.keys(master).forEach((id) => {
       map[id] = Array.from({ length: days + 1 }, () => ({
@@ -990,48 +1044,68 @@ window.loadMonthlyReport = async () => {
       }
     });
 
-    // Body
-    tbody.innerHTML = Object.keys(master)
-      .sort((a, b) => master[a].nama.localeCompare(master[b].nama))
-      .map((id) => {
-        let rowHtml = `<td class="p-1.5 sm:p-2 font-medium sticky left-0 bg-white dark:bg-darkcard border-r border-b dark:border-gray-700 z-20 shadow-sm text-[10px] sm:text-sm w-[120px] sm:w-[200px] break-words leading-tight" title="${master[id].nama}">${master[id].nama}</td>`;
-        let st = { H: 0, S: 0, I: 0, A: 0 };
+    const ids = Object.keys(master).sort((a, b) => master[a].nama.localeCompare(master[b].nama));
+    const statusBadge = {
+      Hadir: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-emerald-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">H</div>',
+      Sakit: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-amber-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">S</div>',
+      Izin: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">I</div>',
+      Alpa: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-red-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">A</div>',
+      "-": '<div class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto"></div>',
+    };
 
-        for (let i = 1; i <= days; i++) {
-          const dataHari = map[id][i];
-          const s = dataHari.status;
+    const buildRowHtml = (id) => {
+      let rowHtml = `<td class="p-1.5 sm:p-2 font-medium sticky left-0 bg-white dark:bg-darkcard border-r border-b dark:border-gray-700 z-20 shadow-sm text-[10px] sm:text-sm w-[120px] sm:w-[200px] break-words leading-tight"></td>`;
+      let st = { H: 0, S: 0, I: 0, A: 0 };
 
-          if (s === "Hadir") st.H++;
-          else if (s === "Sakit") st.S++;
-          else if (s === "Izin") st.I++;
-          else if (s === "Alpa") st.A++;
+      for (let i = 1; i <= days; i++) {
+        const dataHari = map[id][i];
+        const s = dataHari.status;
 
-          const badge =
-            {
-              Hadir: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-emerald-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">H</div>',
-              Sakit: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-amber-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">S</div>',
-              Izin: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">I</div>',
-              Alpa: '<div class="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-red-500 text-white text-[7px] sm:text-[9px] font-black flex items-center justify-center mx-auto shadow-sm">A</div>',
-              "-": '<div class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto"></div>',
-            }[s] || '<div class="w-1 h-1 rounded-full bg-gray-100 mx-auto"></div>';
+        if (s === "Hadir") st.H++;
+        else if (s === "Sakit") st.S++;
+        else if (s === "Izin") st.I++;
+        else if (s === "Alpa") st.A++;
 
-          const title =
-            dataHari.keterangan !== "-"
-              ? `Tgl ${i}: ${dataHari.keterangan}`
-              : "";
-          rowHtml += `<td class="p-0.5 sm:p-1 text-center border-b border-r dark:border-gray-800 bg-white dark:bg-darkcard h-8 sm:h-10 cursor-default hover:bg-indigo-50/50 transition-colors" title="${title}">${badge}</td>`;
-        }
+        const badge = statusBadge[s] || '<div class="w-1 h-1 rounded-full bg-gray-100 mx-auto"></div>';
+        const title =
+          dataHari.keterangan !== "-"
+            ? `Tgl ${i}: ${dataHari.keterangan}`
+            : "";
+        rowHtml += `<td class="p-0.5 sm:p-1 text-center border-b border-r dark:border-gray-800 bg-white dark:bg-darkcard h-8 sm:h-10 cursor-default hover:bg-indigo-50/50 transition-colors" title="${title.replace(/"/g, "&quot;")}">${badge}</td>`;
+      }
 
-        return `
+      return {
+        html: `
                 <tr class="hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
                     ${rowHtml}
                     <td class="text-center font-black text-[10px] text-emerald-600 border-b border-r bg-emerald-50/30 dark:bg-emerald-900/5">${st.H}</td>
                     <td class="text-center font-black text-[10px] text-amber-600 border-b border-r bg-amber-50/30 dark:bg-amber-900/5">${st.S}</td>
                     <td class="text-center font-black text-[10px] text-blue-600 border-b border-r bg-blue-50/30 dark:bg-blue-900/5">${st.I}</td>
                     <td class="text-center font-black text-[10px] text-red-600 border-b bg-red-50/30 dark:bg-red-900/5">${st.A}</td>
-                </tr>`;
-      })
-      .join("");
+                </tr>`,
+        nama: master[id].nama,
+      };
+    };
+
+    tbody.innerHTML = "";
+    const CHUNK = 20;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const parts = chunk.map((id) => buildRowHtml(id));
+      tbody.insertAdjacentHTML("beforeend", parts.map((p) => p.html).join(""));
+      const rows = tbody.querySelectorAll("tr");
+      parts.forEach((part, offset) => {
+        const row = rows[i + offset];
+        const nameCell = row?.querySelector("td");
+        if (nameCell) {
+          nameCell.textContent = part.nama;
+          nameCell.title = part.nama;
+        }
+      });
+      if (i + CHUNK < ids.length) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    }
 
     if (btnPrint) btnPrint.style.display = "flex";
 

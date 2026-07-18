@@ -1,10 +1,10 @@
-import { db } from "../firebase/config.js?v=dd5a477";
+import { db } from "../firebase/config.js?v=e9d50df";
 import { doc, getDocs, getDoc, collection, setDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { adminService } from "../firebase/admin-service.js?v=dd5a477";
-import { userService } from "../firebase/user-service.js?v=dd5a477";
-import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=dd5a477";
-import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=dd5a477";
-import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=dd5a477";
+import { adminService } from "../firebase/admin-service.js?v=e9d50df";
+import { userService } from "../firebase/user-service.js?v=e9d50df";
+import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=e9d50df";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=e9d50df";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e9d50df";
 
 const el = (id) => document.getElementById(id);
 
@@ -685,7 +685,7 @@ window.openGuruKelasAccess = async () => {
         gurus.forEach(guru => {
           localStorage.removeItem(`profile_${guru.id}`);
         });
-        const { LoginCache } = await import('../firebase/auth-service.js?v=dd5a477');
+        const { LoginCache } = await import('../firebase/auth-service.js?v=e9d50df');
         gurus.forEach(guru => LoginCache.remove(guru.id));
         
         showToast("Akses kelas guru berhasil diperbarui!", "success");
@@ -909,7 +909,11 @@ function setupEvents() {
     }, isKhusus ? "Hanya keluar kelas." : "Data hilang permanen.");
   };
   window.handleDeleteClass = async (id) => {
-    if (confirm("Hapus Kelas?")) { await adminService.deleteClass(id); loadClasses(true); window.openClassManager(true); }
+    showConfirm("Hapus Kelas?", async () => {
+      await adminService.deleteClass(id);
+      loadClasses(true);
+      window.openClassManager(true);
+    }, "Data kelas dan relasinya akan dihapus.");
   };
   window.removeDraft = (i) => { state.draft.splice(i, 1); renderDraftTable(); };
 }
