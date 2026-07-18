@@ -1,5 +1,5 @@
-import { auth } from '../firebase/config.js?v=e9d50df';
-import { authService } from '../firebase/auth-service.js?v=e9d50df';
+import { auth } from '../firebase/config.js?v=fb1eddf';
+import { authService } from '../firebase/auth-service.js?v=fb1eddf';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 let isInitialized = false;
@@ -50,11 +50,17 @@ export function initAuthGuard(options = { requireAdmin: false, requireSuperAdmin
       let userData = await resolveSessionUser(activeUser.uid);
 
       if (!userData) {
-        if (auth.currentUser && !isLoginPage) {
-          console.warn('User doc belum tersedia, tunggu sync...');
-          return;
+        for (let i = 0; i < 3 && !userData; i++) {
+          await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+          userData = await authService.getUserData(activeUser.uid, false);
         }
-        if (!isLoginPage) window.location.replace('login.html');
+      }
+
+      if (!userData) {
+        if (!isLoginPage) {
+          console.warn('User doc tidak tersedia setelah retry.');
+          window.location.replace('/login');
+        }
         return;
       }
 

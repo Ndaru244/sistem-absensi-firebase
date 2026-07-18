@@ -1,6 +1,6 @@
-import { profileService } from '../firebase/profile-service.js?v=e9d50df';
-import { authService } from '../firebase/auth-service.js?v=e9d50df';
-import { showConfirm, showToast } from '../utils/ui.js?v=e9d50df';
+import { profileService } from '../firebase/profile-service.js?v=fb1eddf';
+import { authService } from '../firebase/auth-service.js?v=fb1eddf';
+import { showConfirm, showToast } from '../utils/ui.js?v=fb1eddf';
 
 const PROFILE_MODAL_ID = 'modalProfile';
 let activeProfileTab = 'info';

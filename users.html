@@ -8,7 +8,7 @@
     <meta name="description" content="Kontrol akses pengguna, verifikasi akun, dan pengaturan role admin.">
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=e9d50df">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=fb1eddf">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -104,16 +104,16 @@
     </main>
 
     <script type="module">
-        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=e9d50df';
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=e9d50df';
-        import { initNavbarProfile } from './assets/js/components/navbar.js?v=e9d50df';
+        import { toggleTheme, initNavbar } from './assets/js/utils/ui.js?v=fb1eddf';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=fb1eddf';
+        import { initNavbarProfile } from './assets/js/components/navbar.js?v=fb1eddf';
 
         window.toggleTheme = toggleTheme;
         initNavbar('users');
         initAuthGuard({ requireSuperAdmin: true });
         initNavbarProfile();
 
-        await import('./assets/js/pages/users.js?v=e9d50df');
+        await import('./assets/js/pages/users.js?v=fb1eddf');
     </script>
 <script>
 if ('serviceWorker' in navigator) {

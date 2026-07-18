@@ -1,10 +1,10 @@
-import { db } from "../firebase/config.js?v=e9d50df";
+import { db } from "../firebase/config.js?v=fb1eddf";
 import { doc, getDocs, getDoc, collection, setDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { adminService } from "../firebase/admin-service.js?v=e9d50df";
-import { userService } from "../firebase/user-service.js?v=e9d50df";
-import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=e9d50df";
-import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=e9d50df";
-import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e9d50df";
+import { adminService } from "../firebase/admin-service.js?v=fb1eddf";
+import { userService } from "../firebase/user-service.js?v=fb1eddf";
+import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=fb1eddf";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=fb1eddf";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=fb1eddf";
 
 const el = (id) => document.getElementById(id);
 
@@ -685,7 +685,7 @@ window.openGuruKelasAccess = async () => {
         gurus.forEach(guru => {
           localStorage.removeItem(`profile_${guru.id}`);
         });
-        const { LoginCache } = await import('../firebase/auth-service.js?v=e9d50df');
+        const { LoginCache } = await import('../firebase/auth-service.js?v=fb1eddf');
         gurus.forEach(guru => LoginCache.remove(guru.id));
         
         showToast("Akses kelas guru berhasil diperbarui!", "success");
