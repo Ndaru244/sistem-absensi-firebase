@@ -10,7 +10,7 @@
     <meta property="og:title" content="Login - SDN Sunter Agung 12 PG">
     <meta property="og:description" content="Akses manajemen kehadiran siswa berbasis Cloud.">
     <meta property="og:image" content="assets/images/logo.png">
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=dd5a477">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=e9d50df">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -56,6 +56,53 @@
             </div>
 
             <div class="space-y-4">
+                <form id="email-login-form" class="space-y-3">
+                    <div>
+                        <input id="email-input" type="email" placeholder="Email" class="input w-full" required>
+                        <p id="email-error" class="mt-1 hidden text-sm text-red-600 dark:text-red-400"></p>
+                    </div>
+                    <div>
+                        <div class="relative">
+                            <input id="password-input" type="password" placeholder="Password" class="input w-full pr-10" required>
+                            <button type="button" class="toggle-password absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" data-target="password-input">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <p id="password-error" class="mt-1 hidden text-sm text-red-600 dark:text-red-400"></p>
+                        <div class="mt-2 text-right">
+                            <button type="button" id="btnForgotPassword" class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+                                Lupa password?
+                            </button>
+                        </div>
+                    </div>
+                    <button id="btnEmailLogin" type="submit" class="btn-primary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Masuk dengan Email
+                    </button>
+                    <p id="form-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"></p>
+                    <p id="form-success" class="hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"></p>
+                </form>
+
+                <div id="reset-password-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-900/50 p-4">
+                    <div class="card w-full max-w-sm">
+                        <div class="card-body p-5 space-y-4">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900 dark:text-white">Reset Password</h2>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Masukkan email akun Anda. Jika terdaftar, tautan reset akan dikirim.</p>
+                            </div>
+                            <div>
+                                <input id="reset-email-input" type="email" placeholder="Email" class="input w-full">
+                                <p id="reset-email-error" class="mt-1 hidden text-sm text-red-600 dark:text-red-400"></p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" id="btnResetCancel" class="btn-secondary flex-1">Batal</button>
+                                <button type="button" id="btnResetSend" class="btn-primary flex-1">Kirim</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center text-xs text-slate-400">atau</div>
+
                 <button id="btnGoogleLogin"
                     class="btn-secondary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed">
                     <img id="g-logo" src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png"
@@ -81,9 +128,11 @@
     </div>
 
     <script type="module">
-        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=dd5a477';
-        import { authService } from './assets/js/firebase/auth-service.js?v=dd5a477';
-        import { auth } from './assets/js/firebase/config.js?v=dd5a477';
+        import { initAuthGuard } from './assets/js/utils/auth-guard.js?v=e9d50df';
+        import authServiceModule from './assets/js/firebase/auth-service.js?v=e9d50df';
+        import { auth } from './assets/js/firebase/config.js?v=e9d50df';
+
+        const authService = authServiceModule;
 
         initAuthGuard({ preventLoginAccess: true });
         lucide.createIcons();
@@ -94,7 +143,167 @@
         const gLogo = document.getElementById('g-logo');
         const statusMessage = document.getElementById('status-message');
         const statusText = document.getElementById('status-text');
+        const emailForm = document.getElementById('email-login-form');
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const btnEmailLogin = document.getElementById('btnEmailLogin');
+        const emailError = document.getElementById('email-error');
+        const passwordError = document.getElementById('password-error');
+        const formError = document.getElementById('form-error');
+        const formSuccess = document.getElementById('form-success');
+        const btnForgotPassword = document.getElementById('btnForgotPassword');
+        const resetModal = document.getElementById('reset-password-modal');
+        const resetEmailInput = document.getElementById('reset-email-input');
+        const resetEmailError = document.getElementById('reset-email-error');
+        const btnResetCancel = document.getElementById('btnResetCancel');
+        const btnResetSend = document.getElementById('btnResetSend');
+        const toggleButtons = document.querySelectorAll('.toggle-password');
         let isProcessing = false;
+        let isResetting = false;
+
+        function clearFieldErrors() {
+            emailError.classList.add('hidden');
+            passwordError.classList.add('hidden');
+            formError.classList.add('hidden');
+            formSuccess.classList.add('hidden');
+            emailError.textContent = '';
+            passwordError.textContent = '';
+            formError.textContent = '';
+            formSuccess.textContent = '';
+        }
+
+        function showFieldError(field, message) {
+            const errorEl = field === 'email' ? emailError : passwordError;
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+
+        function showFormError(message) {
+            formSuccess.classList.add('hidden');
+            formSuccess.textContent = '';
+            formError.textContent = message;
+            formError.classList.remove('hidden');
+        }
+
+        function showFormSuccess(message) {
+            formError.classList.add('hidden');
+            formError.textContent = '';
+            formSuccess.textContent = message;
+            formSuccess.classList.remove('hidden');
+        }
+
+        function openResetModal() {
+            resetEmailError.classList.add('hidden');
+            resetEmailError.textContent = '';
+            resetEmailInput.value = emailInput.value.trim();
+            resetModal.classList.remove('hidden');
+            resetModal.classList.add('flex');
+            setTimeout(() => resetEmailInput.focus(), 50);
+        }
+
+        function closeResetModal() {
+            resetModal.classList.add('hidden');
+            resetModal.classList.remove('flex');
+            resetEmailError.classList.add('hidden');
+            resetEmailError.textContent = '';
+            btnResetSend.disabled = false;
+            btnResetSend.textContent = 'Kirim';
+        }
+
+        toggleButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-target');
+                const targetInput = document.getElementById(targetId);
+                if (!targetInput) return;
+
+                const isPassword = targetInput.type === 'password';
+                targetInput.type = isPassword ? 'text' : 'password';
+                const icon = button.querySelector('i');
+                if (icon) {
+                    icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+            });
+        });
+
+        btnForgotPassword.addEventListener('click', () => {
+            if (isProcessing || isResetting) return;
+            openResetModal();
+        });
+
+        btnResetCancel.addEventListener('click', () => {
+            if (isResetting) return;
+            closeResetModal();
+        });
+
+        resetModal.addEventListener('click', (event) => {
+            if (event.target === resetModal && !isResetting) closeResetModal();
+        });
+
+        btnResetSend.addEventListener('click', async () => {
+            if (isResetting) return;
+
+            const email = resetEmailInput.value.trim();
+            resetEmailError.classList.add('hidden');
+            resetEmailError.textContent = '';
+
+            if (!email) {
+                resetEmailError.textContent = 'Email wajib diisi.';
+                resetEmailError.classList.remove('hidden');
+                return;
+            }
+
+            isResetting = true;
+            btnResetSend.disabled = true;
+            btnResetSend.textContent = 'Mengirim...';
+
+            try {
+                const result = await authService.sendPasswordReset(email);
+                closeResetModal();
+                showFormSuccess(result.message || 'Jika email terdaftar, tautan reset password telah dikirim.');
+            } catch (error) {
+                resetEmailError.textContent = error.message || 'Gagal mengirim tautan reset password.';
+                resetEmailError.classList.remove('hidden');
+                btnResetSend.disabled = false;
+                btnResetSend.textContent = 'Kirim';
+            } finally {
+                isResetting = false;
+            }
+        });
+
+        emailForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (isProcessing) return;
+
+            clearFieldErrors();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            if (!email) {
+                showFieldError('email', 'Email wajib diisi.');
+                return;
+            }
+            if (!password) {
+                showFieldError('password', 'Password wajib diisi.');
+                return;
+            }
+
+            isProcessing = true;
+            setLoading(true, 'Masuk dengan email...');
+
+            try {
+                const userData = await authService.loginWithEmailPassword(email, password);
+                if (!userData) throw new Error('Gagal mendapatkan data user');
+                await redirectAfterLogin(userData);
+            } catch (error) {
+                console.error('Email login error:', error);
+                showFormError(error.message || 'Gagal masuk. Silakan coba lagi.');
+                resetBtn();
+                isProcessing = false;
+            }
+        });
 
         btn.addEventListener('click', async () => {
             if (isProcessing) return;
@@ -104,35 +313,39 @@
             try {
                 const userData = await authService.loginWithGoogle();
                 if (!userData) throw new Error('Gagal mendapatkan data user');
-
-                setLoading(true, "Memverifikasi akun...");
-
-                if (userData.role === 'admin' || userData.role === 'super_admin') {
-                    setLoading(true, "Menuju Admin Panel...");
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    window.location.replace('admin.html');
-                } else if (userData.isVerified || userData.role === 'guru') {
-                    setLoading(true, "Menuju Dashboard...");
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    window.location.replace('index.html');
-                } else {
-                    alert("Akun belum diverifikasi Admin.");
-                    await authService.logout();
-                    resetBtn();
-                    isProcessing = false;
-                }
+                await redirectAfterLogin(userData);
             } catch (error) {
                 if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
                     console.error('Login error:', error);
-                    alert("Gagal Masuk: " + (error.message || 'Unknown error'));
+                    showFormError(error.message || 'Gagal masuk dengan Google.');
                 }
                 resetBtn();
                 isProcessing = false;
             }
         });
 
+        async function redirectAfterLogin(userData) {
+            setLoading(true, "Memverifikasi akun...");
+
+            if (userData.role === 'admin' || userData.role === 'super_admin') {
+                setLoading(true, "Menuju Admin Panel...");
+                await new Promise(resolve => setTimeout(resolve, 300));
+                window.location.replace('admin.html');
+            } else if (userData.isVerified || userData.role === 'guru') {
+                setLoading(true, "Menuju Dashboard...");
+                await new Promise(resolve => setTimeout(resolve, 300));
+                window.location.replace('index.html');
+            } else {
+                showFormError('Akun belum diverifikasi Admin.');
+                await authService.logout();
+                resetBtn();
+                isProcessing = false;
+            }
+        }
+
         function setLoading(show, message = "Memproses...") {
             btn.disabled = show;
+            btnEmailLogin.disabled = show;
             if (show) {
                 btnText.innerText = message;
                 gLogo.classList.add('hidden');
@@ -156,6 +369,11 @@
             document.head.appendChild(link);
         });
     </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function () {});
+}
+</script>
 </body>
 
 </html>

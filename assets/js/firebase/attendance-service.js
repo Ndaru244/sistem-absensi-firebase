@@ -1,10 +1,10 @@
-import { db, auth } from './config.js?v=dd5a477';
+import { db, auth } from './config.js?v=e9d50df';
 import {
     collection, getDocs, doc, getDoc, setDoc, query, where, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { readDraft, removeDraft } from '../utils/cache-utils.js?v=dd5a477';
-import { broadcast } from '../utils/tab-sync.js?v=dd5a477';
-import { enqueue, isOnline, flushQueue } from '../utils/sync-queue.js?v=dd5a477';
+import { readDraft, removeDraft } from '../utils/cache-utils.js?v=e9d50df';
+import { broadcast } from '../utils/tab-sync.js?v=e9d50df';
+import { enqueue, isOnline, flushQueue } from '../utils/sync-queue.js?v=e9d50df';
 
 const queryMemCache = new Map();
 const QUERY_CACHE_TTL = 1000 * 60 * 3;
@@ -110,17 +110,23 @@ export const attendanceService = {
             
             if (!forceRefresh) {
                 const cached = AttendanceCache.getRekap(docId);
-                if (cached && !cached.is_locked) return cached;
+                if (cached) return cached;
             }
 
-            const ref = doc(db, "rekap_absensi", docId);
-            const snap = await getDoc(ref);
-            if (snap.exists()) {
-                const data = snap.data();
-                AttendanceCache.setRekap(docId, data);
-                return data;
+            try {
+                const ref = doc(db, "rekap_absensi", docId);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    AttendanceCache.setRekap(docId, data);
+                    return data;
+                }
+                return null;
+            } catch (networkError) {
+                const cached = AttendanceCache.getRekap(docId);
+                if (cached) return cached;
+                throw networkError;
             }
-            return null;
         } catch (error) { console.error(error); throw error; }
     },
 
@@ -131,31 +137,37 @@ export const attendanceService = {
                 const cached = AttendanceCache.getMaster(kelasId);
                 if (cached) return cached;
             }
-            const kelasRef = doc(db, "kelas", kelasId);
-            const kelasSnap = await getDoc(kelasRef);
-            const isKhusus = kelasSnap.exists() && kelasSnap.data().is_khusus === true;
+            try {
+                const kelasRef = doc(db, "kelas", kelasId);
+                const kelasSnap = await getDoc(kelasRef);
+                const isKhusus = kelasSnap.exists() && kelasSnap.data().is_khusus === true;
 
-            let siswaDocs = [];
-            if (isKhusus) {
-                const q = query(collection(db, "anggota_kelas"), where("kelasId", "==", kelasId));
-                const snap = await getDocs(q);
-                const ids = snap.docs.map(d => d.data().siswaId);
-                if (ids.length > 0) {
-                    const promises = ids.map(id => getDoc(doc(db, "siswa", id)));
-                    const results = await Promise.all(promises);
-                    siswaDocs = results.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+                let siswaDocs = [];
+                if (isKhusus) {
+                    const q = query(collection(db, "anggota_kelas"), where("kelasId", "==", kelasId));
+                    const snap = await getDocs(q);
+                    const ids = snap.docs.map(d => d.data().siswaId);
+                    if (ids.length > 0) {
+                        const promises = ids.map(id => getDoc(doc(db, "siswa", id)));
+                        const results = await Promise.all(promises);
+                        siswaDocs = results.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+                    }
+                } else {
+                    const q = query(collection(db, "siswa"), where("id_kelas", "==", kelasId), where("status_aktif", "==", "Aktif"));
+                    const snap = await getDocs(q);
+                    siswaDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 }
-            } else {
-                const q = query(collection(db, "siswa"), where("id_kelas", "==", kelasId), where("status_aktif", "==", "Aktif"));
-                const snap = await getDocs(q);
-                siswaDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                let mapSiswa = {};
+                siswaDocs.forEach(s => {
+                    mapSiswa[s.id] = { nama: s.nama_siswa, nis: s.nis || "-", status: "Hadir", keterangan: "-" };
+                });
+                if (Object.keys(mapSiswa).length > 0) AttendanceCache.setMaster(kelasId, mapSiswa);
+                return mapSiswa;
+            } catch (networkError) {
+                const cached = AttendanceCache.getMaster(kelasId);
+                if (cached) return cached;
+                throw networkError;
             }
-            let mapSiswa = {};
-            siswaDocs.forEach(s => {
-                mapSiswa[s.id] = { nama: s.nama_siswa, nis: s.nis || "-", status: "Hadir", keterangan: "-" };
-            });
-            if (Object.keys(mapSiswa).length > 0) AttendanceCache.setMaster(kelasId, mapSiswa);
-            return mapSiswa;
         } catch (error) { throw error; }
     },
 
@@ -169,7 +181,7 @@ export const attendanceService = {
             clearQueryMemCache();
             if (auth.currentUser?.uid) removeDraft(auth.currentUser.uid);
 
-            const writeOp = { type: 'setDoc', collection: 'rekap_absensi', docId, data, merge: true };
+            const writeOp = { type: 'setDoc', collection: 'rekap_absensi', docId, data, merge: true, uid: auth.currentUser?.uid || null };
             if (!isOnline()) {
                 enqueue(writeOp);
                 broadcast('rekap:updated', { docId });
@@ -200,7 +212,7 @@ export const attendanceService = {
             }
             clearQueryMemCache();
 
-            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: lockData };
+            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: lockData, uid: auth.currentUser?.uid || null };
             if (!isOnline()) {
                 enqueue(writeOp);
                 broadcast('rekap:updated', { docId });
@@ -228,7 +240,7 @@ export const attendanceService = {
             }
             clearQueryMemCache();
 
-            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: unlockData };
+            const writeOp = { type: 'updateDoc', collection: 'rekap_absensi', docId, data: unlockData, uid: auth.currentUser?.uid || null };
             if (!isOnline()) {
                 enqueue(writeOp);
                 broadcast('rekap:updated', { docId });
@@ -257,20 +269,26 @@ export const attendanceService = {
                 const cached = AttendanceCache.getMonthlyReport(kelasId, monthStr);
                 if (cached) return cached;
             }
-            const startStr = `${monthStr}-01`;
-            const [y, m] = monthStr.split("-").map(Number);
-            const lastDay = new Date(y, m, 0).getDate();
-            const endStr = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
-            const q = query(
-                collection(db, "rekap_absensi"),
-                where("kelas", "==", kelasId),
-                where("tanggal", ">=", startStr),
-                where("tanggal", "<=", endStr)
-            );
-            const snap = await getDocs(q);
-            const data = snap.docs.map(d => d.data());
-            AttendanceCache.setMonthlyReport(kelasId, monthStr, data);
-            return data;
+            try {
+                const startStr = `${monthStr}-01`;
+                const [y, m] = monthStr.split("-").map(Number);
+                const lastDay = new Date(y, m, 0).getDate();
+                const endStr = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
+                const q = query(
+                    collection(db, "rekap_absensi"),
+                    where("kelas", "==", kelasId),
+                    where("tanggal", ">=", startStr),
+                    where("tanggal", "<=", endStr)
+                );
+                const snap = await getDocs(q);
+                const data = snap.docs.map(d => d.data());
+                AttendanceCache.setMonthlyReport(kelasId, monthStr, data);
+                return data;
+            } catch (networkError) {
+                const cached = AttendanceCache.getMonthlyReport(kelasId, monthStr);
+                if (cached) return cached;
+                throw networkError;
+            }
         } catch (error) { throw error; }
     },
 

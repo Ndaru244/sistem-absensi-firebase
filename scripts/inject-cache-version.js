@@ -73,12 +73,16 @@ if ('serviceWorker' in navigator) {
 
 function ensureSwRegistration(content) {
   if (content.includes('serviceWorker.register')) return content;
-  if (content.includes('location.replace')) return content;
   return content.replace('</body>', `${SW_SNIPPET}\n</body>`);
 }
 
 function generateServiceWorker(jsFiles) {
   const precache = [
+    '/index.html',
+    '/admin.html',
+    '/login.html',
+    '/users.html',
+    '/404.html',
     `/assets/css/tailwind.css?v=${BUILD_ID}`,
     '/assets/images/logo.png',
     ...jsFiles.map((f) => `/${path.relative(ROOT, f).replace(/\\/g, '/')}?v=${BUILD_ID}`),
@@ -88,9 +92,14 @@ function generateServiceWorker(jsFiles) {
 const PRECACHE = ${JSON.stringify(precache, null, 2)};
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)).catch(() => {})
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of PRECACHE) {
+      try {
+        await cache.add(url);
+      } catch (e) {}
+    }
+  })());
   self.skipWaiting();
 });
 
@@ -107,6 +116,13 @@ function isNavigation(request) {
   return request.mode === 'navigate';
 }
 
+function navigationFallback(pathname) {
+  const path = pathname === '/' ? '/index.html' : pathname;
+  return caches.match(path).then((cached) =>
+    cached || caches.match('/index.html').then((home) => home || caches.match('/404.html'))
+  );
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -114,7 +130,20 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(request);
+        try {
+          const res = await fetch(request);
+          if (res && res.ok) {
+            try { await cache.put(request, res.clone()); } catch (e) {}
+          }
+          return res;
+        } catch (e) {
+          return cached || Response.error();
+        }
+      })
+    );
     return;
   }
 
@@ -122,7 +151,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request, { cache: 'no-store' })
         .then((res) => res)
-        .catch(() => caches.match('/404.html'))
+        .catch(() => navigationFallback(url.pathname))
     );
     return;
   }
@@ -134,7 +163,7 @@ self.addEventListener('fetch', (event) => {
           const network = fetch(request).then((res) => {
             if (res.ok) cache.put(request, res.clone());
             return res;
-          });
+          }).catch(() => cached);
           return cached || network;
         })
       )

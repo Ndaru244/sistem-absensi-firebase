@@ -58,10 +58,7 @@ const _ensureModals = () => {
                         <h3 id="html-title" class="text-base font-semibold text-slate-900 dark:text-white">Form</h3>
                     </div>
                     <div id="html-body" class="modal-body"></div>
-                    <div class="modal-footer">
-                        <button onclick="document.getElementById('custom-html').classList.add('hidden')" class="btn-secondary btn-sm">Batal</button>
-                        <button id="btn-html-save" class="btn-primary btn-sm">Simpan</button>
-                    </div>
+                    <div id="html-footer" class="modal-footer"></div>
                 </div>
             </div>
         `);
@@ -76,11 +73,6 @@ const _ensureModals = () => {
             if (promptCallback) promptCallback(val);
             document.getElementById('custom-prompt').classList.add('hidden');
         };
-
-        document.getElementById('btn-html-save').onclick = () => {
-            if (htmlCallback) htmlCallback();
-            document.getElementById('custom-html').classList.add('hidden');
-        };
     }
 };
 
@@ -92,16 +84,29 @@ const _open = (id, content, cb, title = '', sizeClass = null) => {
         document.getElementById('html-title').innerText = title || 'Form Edit';
         document.getElementById('html-body').innerHTML = content;
         htmlCallback = cb;
-        
-        // Apply custom size if provided
-        const panel = el.querySelector('.modal-panel');
-        if (sizeClass) {
-            panel.classList.remove('max-w-md');
-            panel.classList.add(sizeClass);
-        } else {
-            panel.classList.remove('max-w-md', 'max-w-sm', 'max-w-lg', 'max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl', 'max-w-full');
-            panel.classList.add('max-w-md');
+
+        const footer = document.getElementById('html-footer');
+        if (footer) {
+            if (cb) {
+                footer.innerHTML = `
+                    <button type="button" onclick="document.getElementById('custom-html').classList.add('hidden')" class="btn-secondary btn-sm">Batal</button>
+                    <button type="button" id="btn-html-save" class="btn-primary btn-sm">Simpan</button>
+                `;
+                document.getElementById('btn-html-save').onclick = () => {
+                    if (htmlCallback) htmlCallback();
+                    document.getElementById('custom-html').classList.add('hidden');
+                };
+            } else {
+                footer.innerHTML = `
+                    <button type="button" onclick="document.getElementById('custom-html').classList.add('hidden')" class="btn-secondary btn-sm">Tutup</button>
+                `;
+            }
         }
+
+        const panel = el.querySelector('.modal-panel');
+        const sizeClasses = ['max-w-md', 'max-w-sm', 'max-w-lg', 'max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl', 'max-w-full'];
+        panel.classList.remove(...sizeClasses);
+        panel.classList.add(sizeClass || 'max-w-md');
     } else {
         const msgId = id === 'custom-modal' ? 'modal-msg' : 'prompt-msg';
         document.getElementById(msgId).innerText = content;
@@ -135,17 +140,22 @@ export function showConfirm(title, onConfirm, description = "") {
                 <div class="w-12 h-12 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="alert-triangle" class="w-6 h-6"></i>
                 </div>
-                <h3 class="text-base font-semibold text-slate-900 dark:text-white mb-2">${title || "Konfirmasi"}</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">${description || "Apakah Anda yakin ingin melanjutkan tindakan ini?"}</p>
-                <div class="flex gap-2">
-                    <button id="btnCancelConfirm" class="btn-secondary flex-1">Batal</button>
-                    <button id="btnYesConfirm" class="btn-danger flex-1">Ya, Lanjutkan</button>
-                </div>
+                <h3 id="confirm-title" class="text-base font-semibold text-slate-900 dark:text-white mb-2"></h3>
+                <p id="confirm-description" class="text-sm text-slate-500 dark:text-slate-400"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="btnCancelConfirm" class="btn-secondary flex-1">Batal</button>
+                <button id="btnYesConfirm" class="btn-danger flex-1">Ya, Lanjutkan</button>
             </div>
         </div>
     `;
 
     document.body.appendChild(modal);
+
+    const titleEl = modal.querySelector('#confirm-title');
+    const descEl = modal.querySelector('#confirm-description');
+    if (titleEl) titleEl.textContent = title || 'Konfirmasi';
+    if (descEl) descEl.textContent = description || 'Apakah Anda yakin ingin melanjutkan tindakan ini?';
 
     requestAnimationFrame(() => {
         modal.classList.remove('opacity-0');
@@ -193,7 +203,7 @@ export const showToast = (msg, type = 'info') => {
     setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 200); }, 3000);
 };
 
-import { SCHOOL_NAME } from './constants.js?v=dd5a477';
+import { SCHOOL_NAME } from './constants.js?v=e9d50df';
 export function renderNavbar(activePage = 'index') {
     const nav = document.createElement('nav');
     nav.className = 'app-nav';

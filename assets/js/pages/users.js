@@ -1,7 +1,28 @@
-import { userService } from '../firebase/user-service.js?v=dd5a477';
-import { showToast, showConfirm, showCustomModal, initTheme } from '../utils/ui.js?v=dd5a477';
+import { userService } from '../firebase/user-service.js?v=e9d50df';
+import { showToast, showConfirm, showCustomModal, initTheme } from '../utils/ui.js?v=e9d50df';
 
 let allUsers = [];
+
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safePhotoUrl(photo, name = 'User') {
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=random`;
+    if (!photo) return fallback;
+    try {
+        const url = new URL(String(photo));
+        if (url.protocol !== 'https:') return fallback;
+        return url.toString();
+    } catch {
+        return fallback;
+    }
+}
 
 // --- INITIALIZATION ---
 async function initPage() {
@@ -106,32 +127,35 @@ function renderTable(users) {
             roleLabel = 'Guru Kelas';
         }
 
-        const photoUrl = user.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama)}&background=random`;
+        const photoUrl = escapeHtml(safePhotoUrl(user.photo, user.nama));
+        const displayName = escapeHtml(user.nama || 'Tanpa Nama');
+        const email = escapeHtml(user.email || '');
+        const uid = escapeHtml(user.id);
 
         return `
         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
             <td>
-                <div class="flex items-center cursor-pointer gap-3" onclick="window.handleEditUser('${user.id}')">
+                <div class="flex items-center cursor-pointer gap-3" onclick="window.handleEditUser('${uid}')">
                     <img class="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-700" src="${photoUrl}" alt="">
                     <div>
-                        <div class="text-sm font-medium text-slate-900 dark:text-white">${user.nama || 'Tanpa Nama'}</div>
-                        <div class="text-xs text-slate-500 break-all">${user.email}</div>
+                        <div class="text-sm font-medium text-slate-900 dark:text-white">${displayName}</div>
+                        <div class="text-xs text-slate-500 break-all">${email}</div>
                     </div>
                 </div>
             </td>
             <td><span class="${badgeClass}">${roleLabel}</span></td>
             <td class="text-center">
                 ${user.isVerified
-                ? `<button onclick="window.handleVerify('${user.id}', true)" class="badge-success"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Terverifikasi</button>`
-                : `<button onclick="window.handleVerify('${user.id}', false)" class="badge-neutral"><i data-lucide="circle" class="w-3.5 h-3.5"></i> Belum Aktif</button>`
+                ? `<button onclick="window.handleVerify('${uid}', true)" class="badge-success"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Terverifikasi</button>`
+                : `<button onclick="window.handleVerify('${uid}', false)" class="badge-neutral"><i data-lucide="circle" class="w-3.5 h-3.5"></i> Belum Aktif</button>`
             }
             </td>
             <td class="text-right">
                 <div class="flex items-center justify-end gap-1">
-                    <button onclick="window.handleEditUser('${user.id}')" class="btn-ghost btn-sm btn-icon" title="Edit">
+                    <button onclick="window.handleEditUser('${uid}')" class="btn-ghost btn-sm btn-icon" title="Edit">
                         <i data-lucide="pencil" class="w-4 h-4"></i>
                     </button>
-                    <button onclick="window.handleDeleteUser('${user.id}', '${user.nama}')" class="btn-ghost btn-sm btn-icon text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" title="Hapus">
+                    <button onclick="window.handleDeleteUser('${uid}')" class="btn-ghost btn-sm btn-icon text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" title="Hapus">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -158,7 +182,7 @@ window.handleEditUser = (uid) => {
                 </label>
                 <div class="relative">
                     <i data-lucide="user" class="absolute left-3 top-3.5 w-5 h-5 text-gray-400"></i>
-                    <input type="text" id="edit-nama" value="${user.nama || ''}" 
+                    <input type="text" id="edit-nama" value="${escapeHtml(user.nama || '')}" 
                         class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition shadow-sm"
                         placeholder="Contoh: Budi Santoso">
                 </div>
@@ -170,7 +194,7 @@ window.handleEditUser = (uid) => {
                 </label>
                 <div class="relative">
                     <i data-lucide="badge-check" class="absolute left-3 top-3.5 w-5 h-5 text-gray-400"></i>
-                    <input type="number" id="edit-nip" value="${user.nip === '-' ? '' : user.nip || ''}" 
+                    <input type="number" id="edit-nip" value="${escapeHtml(user.nip === '-' ? '' : user.nip || '')}" 
                         class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-base focus:ring-2 focus:ring-blue-500 outline-none transition shadow-sm"
                         placeholder="Nomor Induk Pegawai">
                 </div>
@@ -248,8 +272,10 @@ window.handleVerify = async (uid, status) => {
 };
 
 // 3. DELETE
-window.handleDeleteUser = (uid, nama) => {
-    showConfirm(`Hapus user <b>${nama}</b> selamanya?`, async () => {
+window.handleDeleteUser = (uid) => {
+    const user = allUsers.find((item) => item.id === uid);
+    const nama = user?.nama || 'user ini';
+    showConfirm(`Hapus user ${nama} selamanya?`, async () => {
         try {
             await userService.deleteUserDoc(uid);
             allUsers = allUsers.filter(u => u.id !== uid);

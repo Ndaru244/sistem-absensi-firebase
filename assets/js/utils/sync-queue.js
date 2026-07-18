@@ -4,10 +4,12 @@ import {
   updateDoc,
   Timestamp,
 } from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
-import { broadcast } from './tab-sync.js?v=dd5a477';
+import { broadcast } from './tab-sync.js?v=e9d50df';
 
 const QUEUE_KEY = 'app_sync_queue';
+const DEAD_LETTER_KEY = 'app_sync_dead_letter';
 const MAX_RETRIES = 3;
+const MAX_DEAD_LETTER = 50;
 let flushing = false;
 
 export function isOnline() {
@@ -55,12 +57,58 @@ function writeQueue(queue) {
   }
 }
 
+function readDeadLetter() {
+  try {
+    const raw = localStorage.getItem(DEAD_LETTER_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDeadLetter(items) {
+  try {
+    if (!items.length) {
+      localStorage.removeItem(DEAD_LETTER_KEY);
+    } else {
+      localStorage.setItem(DEAD_LETTER_KEY, JSON.stringify(items.slice(-MAX_DEAD_LETTER)));
+    }
+  } catch (e) {
+    console.warn('Dead letter write error:', e);
+  }
+}
+
+function pushDeadLetter(op) {
+  const items = readDeadLetter();
+  items.push({
+    ...op,
+    failedAt: Date.now(),
+  });
+  writeDeadLetter(items);
+  broadcast('sync:failed', { docId: op.docId, type: op.type, retries: op.retries });
+}
+
+function opKey(op) {
+  return `${op.collection}:${op.docId}:${op.type}`;
+}
+
+function sortQueue(queue) {
+  return [...queue].sort((a, b) => {
+    if (a.type !== b.type) {
+      if (a.type === 'setDoc') return -1;
+      if (b.type === 'setDoc') return 1;
+    }
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
+}
+
 export function enqueue(op) {
-  const queue = readQueue();
+  const queue = readQueue().filter((item) => opKey(item) !== opKey(op));
   const entry = {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     retries: 0,
     createdAt: Date.now(),
+    uid: op.uid || null,
     ...op,
     data: op.data ? serializeData(op.data) : undefined,
   };
@@ -82,29 +130,50 @@ async function executeOp(db, op) {
   }
 }
 
-export async function flushQueue(db) {
+export async function flushQueue(db, { uid = null } = {}) {
   if (flushing || !isOnline()) return;
-  const queue = readQueue();
-  if (!queue.length) return;
-
   flushing = true;
-  const remaining = [];
 
   try {
-    for (const op of queue) {
+    const initial = sortQueue(
+      readQueue().filter((op) => !uid || !op.uid || op.uid === uid)
+    );
+
+    for (const op of initial) {
+      const current = readQueue();
+      const live = current.find((item) => item.id === op.id);
+      if (!live) continue;
+
       try {
-        await executeOp(db, op);
-        broadcast('sync:completed', { docId: op.docId, type: op.type });
+        await executeOp(db, live);
+        writeQueue(readQueue().filter((item) => item.id !== live.id));
+        broadcast('sync:completed', { docId: live.docId, type: live.type });
       } catch (e) {
-        console.warn('Sync op failed:', op.docId, e);
-        op.retries = (op.retries || 0) + 1;
-        if (op.retries < MAX_RETRIES) remaining.push(op);
+        console.warn('Sync op failed:', live.docId, e);
+        const next = readQueue();
+        const idx = next.findIndex((item) => item.id === live.id);
+        if (idx < 0) continue;
+
+        next[idx].retries = (next[idx].retries || 0) + 1;
+        if (next[idx].retries >= MAX_RETRIES) {
+          const failed = next.splice(idx, 1)[0];
+          pushDeadLetter(failed);
+        }
+        writeQueue(next);
       }
     }
-    writeQueue(remaining);
   } finally {
     flushing = false;
   }
+}
+
+export function clearSyncQueue() {
+  writeQueue([]);
+  writeDeadLetter([]);
+}
+
+export function getDeadLetter() {
+  return readDeadLetter();
 }
 
 export function initSyncQueue(db) {
