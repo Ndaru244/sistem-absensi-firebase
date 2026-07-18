@@ -1,5 +1,5 @@
-import { userService } from '../firebase/user-service.js?v=fb1eddf';
-import { showToast, showConfirm, showCustomModal, initTheme } from '../utils/ui.js?v=fb1eddf';
+import { userService } from '../firebase/user-service.js?v=72ec519';
+import { showToast, showConfirm, showCustomModal, initTheme } from '../utils/ui.js?v=72ec519';
 
 let allUsers = [];
 
@@ -242,7 +242,7 @@ window.handleEditUser = (uid) => {
         const newNip = document.getElementById("edit-nip").value.trim() || "-";
         const newRole = document.getElementById("edit-role").value;
 
-        if (!newNama) return showToast("Nama wajib diisi", "error");
+        if (!newNama) return showToast("Nama wajib diisi", "warning");
 
         try {
             await userService.updateUser(uid, {

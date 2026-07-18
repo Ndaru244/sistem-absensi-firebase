@@ -1,4 +1,4 @@
-import { db } from "./config.js?v=fb1eddf";
+import { db } from "./config.js?v=72ec519";
 import {
   collection,
   getDocs,
@@ -6,7 +6,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { LoginCache } from "./auth-service.js?v=fb1eddf";
+import { LoginCache } from "./auth-service.js?v=72ec519";
 
 // ===== USER CACHE MANAGER =====
 const UserCache = {

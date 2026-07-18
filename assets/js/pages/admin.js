@@ -1,10 +1,10 @@
-import { db } from "../firebase/config.js?v=fb1eddf";
+import { db } from "../firebase/config.js?v=72ec519";
 import { doc, getDocs, getDoc, collection, setDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { adminService } from "../firebase/admin-service.js?v=fb1eddf";
-import { userService } from "../firebase/user-service.js?v=fb1eddf";
-import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=fb1eddf";
-import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=fb1eddf";
-import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=fb1eddf";
+import { adminService } from "../firebase/admin-service.js?v=72ec519";
+import { userService } from "../firebase/user-service.js?v=72ec519";
+import { showToast, showConfirm, initTheme, showCustomModal } from "../utils/ui.js?v=72ec519";
+import { clearKepalaSekolahCache } from "../utils/cache-utils.js?v=72ec519";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=72ec519";
 
 const el = (id) => document.getElementById(id);
 
@@ -148,7 +148,7 @@ window.openSchoolSettings = async function () {
     const nip = document.getElementById("set-nip").value.trim();
 
     if (!nama) {
-      showToast("Nama Kepala Sekolah wajib diisi!", "error");
+      showToast("Nama Kepala Sekolah wajib diisi!", "warning");
       return;
     }
 
@@ -536,7 +536,7 @@ window.openManageMembers = async (kelasId) => {
 
     window.saveSpecialMembers = async (kId) => {
       const selectedIds = window.selectedStudents.map(s => s.id);
-      if (!selectedIds.length) return showToast("Pilih minimal 1 siswa", "info");
+      if (!selectedIds.length) return showToast("Pilih minimal 1 siswa", "warning");
 
       const btn = document.querySelector('button[onclick^="saveSpecialMembers"]');
       if (btn) { btn.innerHTML = "Menyimpan..."; btn.disabled = true; }
@@ -685,7 +685,7 @@ window.openGuruKelasAccess = async () => {
         gurus.forEach(guru => {
           localStorage.removeItem(`profile_${guru.id}`);
         });
-        const { LoginCache } = await import('../firebase/auth-service.js?v=fb1eddf');
+        const { LoginCache } = await import('../firebase/auth-service.js?v=72ec519');
         gurus.forEach(guru => LoginCache.remove(guru.id));
         
         showToast("Akses kelas guru berhasil diperbarui!", "success");

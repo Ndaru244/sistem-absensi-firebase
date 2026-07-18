@@ -58,5 +58,11 @@ module.exports = {
     'badge-info',
     'badge-neutral',
     'badge-primary',
+    'toast-success',
+    'toast-error',
+    'toast-warning',
+    'toast-info',
+    'toast-show',
+    'toast-hide',
   ],
 };

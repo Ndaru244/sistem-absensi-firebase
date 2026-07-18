@@ -14,8 +14,8 @@ Sistem absensi berbasis web modern untuk pendataan kehadiran siswa harian dan bu
 | Layer | Teknologi |
 | ----- | --------- |
 | **Frontend** | HTML5, Tailwind CSS (build lokal), Lucide Icons, Chart.js |
-| **Backend** | Firebase Firestore (NoSQL) |
-| **Auth** | Firebase Authentication (Google Sign-In via Popup) |
+| **Backend** | Firebase Firestore (NoSQL) + Firebase Storage |
+| **Auth** | Firebase Authentication (Google dan Email/Password) |
 | **Export** | jsPDF & AutoTable (laporan harian & bulanan) |
 | **Hosting** | Firebase Hosting + Service Worker |
 | **CI/CD** | GitHub Actions → `firebase deploy` |
@@ -154,9 +154,10 @@ npm install
 ### 2. Setup Firebase Console
 
 1. Buat proyek di [Firebase Console](https://console.firebase.google.com/)
-2. Aktifkan **Authentication → Google Sign-In**
+2. Aktifkan **Authentication → Google** dan **Email/Password**
 3. Aktifkan **Firestore Database** (Production Mode)
-4. Daftarkan Web App, salin konfigurasi Firebase
+4. Aktifkan **Firebase Storage**
+5. Daftarkan Web App, salin konfigurasi Firebase
 
 ### 3. Konfigurasi Lokal
 
@@ -168,7 +169,7 @@ cp assets/js/firebase/config.example.js assets/js/firebase/config.js
 
 Edit `assets/js/firebase/config.js` — isi `firebaseConfig` dengan kredensial project Anda.
 
-> `config.js` di-gitignore agar API key tidak ter-commit. Di CI, file ini di-generate otomatis dari GitHub Secret `FIREBASE_CONFIG`.
+> `config.js` di-gitignore agar konfigurasi project tidak ter-commit. Di CI, file ini di-generate otomatis dari GitHub Secret `FIREBASE_CONFIG`.
 
 ### 4. Build
 
@@ -213,6 +214,13 @@ Push ke branch `master` memicu workflow `.github/workflows/firebase-hosting-merg
 
 Pull request memicu preview deploy via `firebase-hosting-pull-request.yml`.
 
+GitHub Actions memerlukan secret berikut:
+
+* `FIREBASE_CONFIG` — JSON konfigurasi Web App Firebase, termasuk `storageBucket`
+* `FIREBASE_SERVICE_ACCOUNT_ABSENSI_INTERNAL` — JSON service account untuk deploy
+
+Konfigurasi yang dihasilkan CI harus mempertahankan export `db`, `auth`, `app`, dan `storage` seperti `assets/js/firebase/config.example.js`. Jika bentuknya berbeda, import Firebase dapat gagal dan data Firestore tidak dimuat meskipun deployment lokal berjalan normal.
+
 ---
 
 ## Arsitektur Offline First
@@ -251,7 +259,7 @@ Enqueue ke sync queue → flush saat online
 
 | Halaman | Akses | Fungsi |
 | ------- | ----- | ------ |
-| `login.html` | Publik | Google Sign-In |
+| `login.html` | Publik | Google Sign-In, Email/Password, dan reset password |
 | `index.html` | Guru+ | Input absensi harian, dashboard, export PDF |
 | `admin.html` | Admin+ | CRUD kelas & siswa |
 | `users.html` | Super Admin | Manajemen user, role, verifikasi |

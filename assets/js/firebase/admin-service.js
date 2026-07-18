@@ -1,5 +1,5 @@
-import { db } from './config.js?v=fb1eddf';
-import { AttendanceCache } from './attendance-service.js?v=fb1eddf';
+import { db } from './config.js?v=72ec519';
+import { AttendanceCache } from './attendance-service.js?v=72ec519';
 import {
     collection, getDocs, doc, writeBatch, deleteDoc, setDoc, query, where, limit, getDoc
     // Hapus 'orderBy' dari import jika tidak dipakai lagi, atau biarkan saja tidak masalah

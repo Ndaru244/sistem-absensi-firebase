@@ -194,16 +194,93 @@ export function showConfirm(title, onConfirm, description = "") {
 
 export const showCustomModal = (title, htmlContent, onSave, sizeClass = null) => _open('custom-html', htmlContent, onSave, title, sizeClass);
 
-export const showToast = (msg, type = 'info') => {
-    const div = document.createElement('div');
-    div.className = `fixed top-4 right-4 z-[100] px-4 py-3 rounded-md text-sm font-medium text-white transform transition-all duration-200 translate-y-[-8px] opacity-0 ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    div.innerText = msg;
-    document.body.appendChild(div);
-    requestAnimationFrame(() => { div.classList.remove('translate-y-[-8px]', 'opacity-0'); });
-    setTimeout(() => { div.classList.add('opacity-0'); setTimeout(() => div.remove(), 200); }, 3000);
+const TOAST_META = {
+    success: { icon: 'check-circle', label: 'Berhasil', duration: 3200 },
+    error: { icon: 'alert-circle', label: 'Gagal', duration: 5000 },
+    warning: { icon: 'alert-triangle', label: 'Perhatian', duration: 4200 },
+    info: { icon: 'info', label: 'Info', duration: 3200 },
 };
 
-import { SCHOOL_NAME } from './constants.js?v=fb1eddf';
+const MAX_TOASTS = 3;
+
+const ensureToastHost = () => {
+    let host = document.getElementById('toast-host');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'toast-host';
+    host.className = 'toast-host';
+    host.setAttribute('aria-live', 'polite');
+    host.setAttribute('aria-relevant', 'additions');
+    document.body.appendChild(host);
+    return host;
+};
+
+const dismissToast = (el) => {
+    if (!el || el.dataset.leaving === '1') return;
+    el.dataset.leaving = '1';
+    if (el._toastTimer) clearTimeout(el._toastTimer);
+    el.classList.remove('toast-show');
+    el.classList.add('toast-hide');
+    const remove = () => el.remove();
+    el.addEventListener('transitionend', remove, { once: true });
+    setTimeout(remove, 250);
+};
+
+export const showToast = (msg, type = 'info') => {
+    const meta = TOAST_META[type] || TOAST_META.info;
+    const variant = TOAST_META[type] ? type : 'info';
+    const host = ensureToastHost();
+
+    while (host.children.length >= MAX_TOASTS) {
+        host.firstElementChild.remove();
+    }
+
+    const el = document.createElement('div');
+    el.className = `toast toast-${variant}`;
+    el.setAttribute('role', variant === 'error' || variant === 'warning' ? 'alert' : 'status');
+
+    el.innerHTML = `
+        <div class="toast-icon" aria-hidden="true">
+            <i data-lucide="${meta.icon}" class="w-4 h-4"></i>
+        </div>
+        <div class="toast-body">
+            <p class="toast-title">${meta.label}</p>
+            <p class="toast-msg"></p>
+        </div>
+        <button type="button" class="toast-close" aria-label="Tutup notifikasi">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    `;
+    el.querySelector('.toast-msg').textContent = String(msg ?? '');
+    el.querySelector('.toast-close').addEventListener('click', () => dismissToast(el));
+
+    host.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ root: el });
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => el.classList.add('toast-show'));
+    });
+
+    let remaining = meta.duration;
+    let startedAt = Date.now();
+    const schedule = () => {
+        el._toastTimer = setTimeout(() => dismissToast(el), remaining);
+    };
+    schedule();
+
+    el.addEventListener('mouseenter', () => {
+        if (el.dataset.leaving === '1') return;
+        clearTimeout(el._toastTimer);
+        remaining = Math.max(remaining - (Date.now() - startedAt), 1200);
+    });
+    el.addEventListener('mouseleave', () => {
+        if (el.dataset.leaving === '1') return;
+        startedAt = Date.now();
+        schedule();
+    });
+};
+
+import { SCHOOL_NAME } from './constants.js?v=72ec519';
 export function renderNavbar(activePage = 'index') {
     const nav = document.createElement('nav');
     nav.className = 'app-nav';

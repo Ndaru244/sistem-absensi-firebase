@@ -1,4 +1,4 @@
-import { broadcast } from './tab-sync.js?v=fb1eddf';
+import { broadcast } from './tab-sync.js?v=72ec519';
 
 const APP_PREFIXES = ['login_session_', 'profile_', 'users_', 'attendance_', 'app_cache_'];
 const APP_KEYS = ['settings_kepala_sekolah', 'app_sync_queue', 'app_sync_dead_letter'];

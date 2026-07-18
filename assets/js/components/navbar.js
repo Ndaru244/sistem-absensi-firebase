@@ -1,6 +1,6 @@
-import { profileService } from '../firebase/profile-service.js?v=fb1eddf';
-import { authService } from '../firebase/auth-service.js?v=fb1eddf';
-import { showConfirm, showToast } from '../utils/ui.js?v=fb1eddf';
+import { profileService } from '../firebase/profile-service.js?v=72ec519';
+import { authService } from '../firebase/auth-service.js?v=72ec519';
+import { showConfirm, showToast } from '../utils/ui.js?v=72ec519';
 
 const PROFILE_MODAL_ID = 'modalProfile';
 let activeProfileTab = 'info';
@@ -539,7 +539,7 @@ function bindActiveTabHandlers(profile, authStatus) {
         if (isSecurityBusy) return;
         const email = authStatus.email || profile.email;
         if (!email) {
-            showToast('Email akun tidak tersedia.', 'error');
+            showToast('Email akun tidak tersedia.', 'warning');
             return;
         }
 
@@ -584,7 +584,7 @@ async function saveInfoProfile() {
         const photoUrl = document.getElementById('profile-photo-link')?.value.trim() || '';
 
         if (!name) {
-            showToast('Nama wajib diisi.', 'error');
+            showToast('Nama wajib diisi.', 'warning');
             return;
         }
 
@@ -593,12 +593,12 @@ async function saveInfoProfile() {
             try {
                 const url = new URL(photoUrl);
                 if (url.protocol !== 'https:') {
-                    showToast('URL foto harus memakai HTTPS.', 'error');
+                    showToast('URL foto harus memakai HTTPS.', 'warning');
                     return;
                 }
                 payload.photo = url.toString();
             } catch {
-                showToast('URL foto tidak valid.', 'error');
+                showToast('URL foto tidak valid.', 'warning');
                 return;
             }
         }
@@ -642,19 +642,19 @@ async function saveSecurityPassword() {
         }
 
         if (!password) {
-            showToast('Password baru wajib diisi.', 'error');
+            showToast('Password baru wajib diisi.', 'warning');
             return;
         }
         if (password !== confirmPassword) {
-            showToast('Konfirmasi password tidak cocok.', 'error');
+            showToast('Konfirmasi password tidak cocok.', 'warning');
             return;
         }
         if (!isStrongPassword(password)) {
-            showToast('Password minimal 8 karakter, wajib ada huruf besar, huruf kecil, angka, dan karakter unik.', 'error');
+            showToast('Password minimal 8 karakter, wajib ada huruf besar, huruf kecil, angka, dan karakter unik.', 'warning');
             return;
         }
         if (hasPassword && !oldPassword) {
-            showToast('Untuk mengubah password, masukkan password lama terlebih dahulu.', 'error');
+            showToast('Untuk mengubah password, masukkan password lama terlebih dahulu.', 'warning');
             return;
         }
 

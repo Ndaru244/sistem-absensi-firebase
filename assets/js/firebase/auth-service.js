@@ -1,4 +1,4 @@
-import { auth, db, storage } from "./config.js?v=fb1eddf";
+import { auth, db, storage } from "./config.js?v=72ec519";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -28,7 +28,7 @@ import {
   deleteDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { clearAllAppCaches } from "../utils/cache-utils.js?v=fb1eddf";
+import { clearAllAppCaches } from "../utils/cache-utils.js?v=72ec519";
 
 const provider = new GoogleAuthProvider();
 const STRONG_PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;

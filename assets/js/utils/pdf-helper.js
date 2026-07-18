@@ -1,11 +1,12 @@
-import { auth } from "../firebase/config.js?v=fb1eddf";
-import { SCHOOL_NAME } from "./constants.js?v=fb1eddf";
+import { auth } from "../firebase/config.js?v=72ec519";
+import { SCHOOL_NAME } from "./constants.js?v=72ec519";
+import { showToast } from "./ui.js?v=72ec519";
 import { doc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 // Helper: Setup Dokumen PDF
 const createPDFDoc = (landscape = false) => {
   if (!window.jspdf) {
-    alert("Library PDF error! Refresh halaman.");
+    showToast("Library PDF gagal dimuat. Refresh halaman.", "error");
     return null;
   }
   return new window.jspdf.jsPDF(landscape ? "l" : "p", "mm", "a4");

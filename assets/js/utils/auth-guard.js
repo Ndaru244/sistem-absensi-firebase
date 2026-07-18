@@ -1,5 +1,6 @@
-import { auth } from '../firebase/config.js?v=fb1eddf';
-import { authService } from '../firebase/auth-service.js?v=fb1eddf';
+import { auth } from '../firebase/config.js?v=72ec519';
+import { authService } from '../firebase/auth-service.js?v=72ec519';
+import { showToast } from './ui.js?v=72ec519';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 let isInitialized = false;
@@ -77,7 +78,8 @@ export function initAuthGuard(options = { requireAdmin: false, requireSuperAdmin
       updateAdminUI(userData.role);
 
       if (!canAccessApp(userData)) {
-        alert('Akun belum diverifikasi Admin.');
+        showToast('Akun belum diverifikasi Admin.', 'warning');
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         await authService.logout();
         return;
       }
