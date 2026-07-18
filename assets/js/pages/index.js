@@ -1,17 +1,17 @@
-import { auth, db } from "../firebase/config.js?v=e9d50df";
-import { attendanceService } from "../firebase/attendance-service.js?v=e9d50df";
-import { adminService } from "../firebase/admin-service.js?v=e9d50df";
-import { authService } from "../firebase/auth-service.js?v=e9d50df";
+import { auth, db } from "../firebase/config.js?v=fb1eddf";
+import { attendanceService } from "../firebase/attendance-service.js?v=fb1eddf";
+import { adminService } from "../firebase/admin-service.js?v=fb1eddf";
+import { authService } from "../firebase/auth-service.js?v=fb1eddf";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=e9d50df";
-import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=e9d50df";
-import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=e9d50df";
-import { onTabSync } from "../utils/tab-sync.js?v=e9d50df";
-import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=e9d50df";
+import { showToast, showConfirm, showCustomModal } from "../utils/ui.js?v=fb1eddf";
+import { exportToPDF, exportMonthlyPDF } from "../utils/pdf-helper.js?v=fb1eddf";
+import { readDraft, writeDraft, removeDraft, getKepalaSekolahCache, setKepalaSekolahCache } from "../utils/cache-utils.js?v=fb1eddf";
+import { onTabSync } from "../utils/tab-sync.js?v=fb1eddf";
+import { SearchableSelect, optionsFromClasses } from "../utils/searchable-select.js?v=fb1eddf";
 
 // Registry SearchableSelect instances — diakses lintas fungsi
 const ss = {
@@ -390,15 +390,22 @@ function registerIndexAuthListener() {
         state.currentUser.role = "viewer";
       }
 
-      const cachedKepsek = getKepalaSekolahCache();
-      if (cachedKepsek) {
-        state.kepalaSekolah = cachedKepsek;
-      } else {
-        const kepsekSnap = await getDoc(doc(db, "settings", "kepala_sekolah"));
-        if (kepsekSnap.exists()) {
-          state.kepalaSekolah = kepsekSnap.data();
-          setKepalaSekolahCache(state.kepalaSekolah);
+      authReady = true;
+      tryRefreshDashboard();
+
+      try {
+        const cachedKepsek = getKepalaSekolahCache();
+        if (cachedKepsek) {
+          state.kepalaSekolah = cachedKepsek;
+        } else {
+          const kepsekSnap = await getDoc(doc(db, "settings", "kepala_sekolah"));
+          if (kepsekSnap.exists()) {
+            state.kepalaSekolah = kepsekSnap.data();
+            setKepalaSekolahCache(state.kepalaSekolah);
+          }
         }
+      } catch (kepsekError) {
+        console.warn("Kepala sekolah load skipped:", kepsekError);
       }
 
       if (state.localData) {
@@ -408,11 +415,10 @@ function registerIndexAuthListener() {
         restoreDraftForUser(user.uid);
       }
 
-      authReady = true;
-      tryRefreshDashboard();
-
     } catch (e) {
       console.error("Auth Error:", e);
+      authReady = true;
+      tryRefreshDashboard();
     }
   } else {
     console.log("User Logged Out");

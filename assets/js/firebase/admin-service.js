@@ -1,5 +1,5 @@
-import { db } from './config.js?v=e9d50df';
-import { AttendanceCache } from './attendance-service.js?v=e9d50df';
+import { db } from './config.js?v=fb1eddf';
+import { AttendanceCache } from './attendance-service.js?v=fb1eddf';
 import {
     collection, getDocs, doc, writeBatch, deleteDoc, setDoc, query, where, limit, getDoc
     // Hapus 'orderBy' dari import jika tidak dipakai lagi, atau biarkan saja tidak masalah
@@ -27,6 +27,15 @@ const CacheManager = {
                 return null;
             }
             return item.data;
+        } catch (e) { return null; }
+    },
+
+    getStale(key) {
+        try {
+            const raw = localStorage.getItem(this.PREFIX + key);
+            if (!raw) return null;
+            const item = JSON.parse(raw);
+            return item?.data ?? null;
         } catch (e) { return null; }
     },
 
@@ -74,6 +83,11 @@ export const adminService = {
             return data;
         } catch (e) {
             console.error("Gagal ambil kelas:", e);
+            const stale = CacheManager.getStale(cacheKey);
+            if (stale && Array.isArray(stale) && stale.length > 0) {
+                console.warn("Memakai cache kelas stale karena network gagal");
+                return stale;
+            }
             throw e;
         }
     },
